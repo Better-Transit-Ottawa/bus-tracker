@@ -120,15 +120,15 @@ async function getDelayInfo(tripFeed: GtfsRealtimeBindings.transit_realtime.Feed
 
 function getCurrentDate(): Date {
     const now = new Date();
-    const year = now.getFullYear().toString();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const year = now.getFullYear();
+    const month = now.getMonth();
     let day = now.getDate();
 
     if (now.getHours() < 3) {
         day--;
     }
 
-    return new Date(`${year}-${month}-${day.toString().padStart(2, '0')}`);
+    return new Date(year, month, day);
 }
 
 function timestampToTimeString(now: Date, timestamp: string): string {

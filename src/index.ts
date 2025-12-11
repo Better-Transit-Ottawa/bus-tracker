@@ -3,7 +3,11 @@ import { fetchRealtime } from "./utils/fetchRealtime.ts";
 const interval = 60 * 1000;
 
 setInterval(() => {
-    fetchRealtime();
+    try {
+        fetchRealtime();
+    } catch (e) {
+        console.error("Error fetching real-time data:", e);
+    }
 }, interval);
 
 fetchRealtime();

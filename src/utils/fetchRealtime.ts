@@ -17,7 +17,7 @@ export async function fetchRealtime(): Promise<void> {
     })]);
 
     if (!responses[0].ok || !responses[1].ok) {
-        console.error(`Failed to fetch real-time data: ${responses[0].status} ${responses[0].statusText} and ${responses[1].status} ${responses[1].statusText}`);
+        throw new Error(`Failed to fetch real-time data: ${responses[0].status} ${responses[0].statusText} and ${responses[1].status} ${responses[1].statusText}`);
     }
 
     const positionsFeed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(

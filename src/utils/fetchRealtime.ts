@@ -176,7 +176,7 @@ async function getRealTripId(serviceIds: string[], recievedTripId: string, route
     // Try to find tripID when it is negative
     const trip = await sql`
         SELECT trip_id FROM blocks
-        WHERE route_id = ${routeId} AND start_time = ${startTime} AND service_id IN (${serviceIds})
+        WHERE route_id = ${routeId} AND start_time = ${startTime} AND service_id IN ${sql(serviceIds)}
         ORDER BY gtfs_version DESC
     `;
 

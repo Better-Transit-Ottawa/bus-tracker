@@ -1,5 +1,4 @@
 import sql from "./database.ts";
-import { toDateString } from "./fetchRealtime.ts";
 
 interface SerciceIdQuery {
     monday: number;
@@ -9,6 +8,11 @@ interface SerciceIdQuery {
     friday: number;
     saturday: number;
     sunday: number;
+}
+
+export interface ServiceDay {
+    start: Date;
+    end: Date;
 }
 
 export async function getServiceIds(date: Date): Promise<string[]> {
@@ -41,8 +45,7 @@ export async function getServiceIds(date: Date): Promise<string[]> {
 }
 
 function dateToServiceIdQuery(date: Date): SerciceIdQuery {
-    const day = date.getDay();
-
+    let day = date.getDay();
     return {
         monday: day === 1 ? 1 : 0,
         tuesday: day === 2 ? 1 : 0,
@@ -52,4 +55,49 @@ function dateToServiceIdQuery(date: Date): SerciceIdQuery {
         saturday: day === 6 ? 1 : 0,
         sunday: day === 0 ? 1 : 0,
     };
+}
+
+export function toDateString(date: Date): string {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function getDateFromTimestamp(time: Date): Date {
+    const year = time.getFullYear();
+    const month = time.getMonth();
+    let day = time.getDate();
+    if (time.getHours() < 3) {
+        day--;
+    }
+
+    return new Date(year, month, day);
+}
+
+export function getServiceDayBoundariesWithPadding(date: Date): ServiceDay {
+    // needs to get to 3 am, being generous for buses running late after 3 AM
+    const start = new Date(date.getTime() + 3 * 1000 * 60 * 60);
+    const end = new Date(date.getTime() + 29 * 1000 * 60 * 60);
+
+    return { start, end }
+}
+
+export async function getGtfsVersion(date: Date): Promise<number> {
+    const result = await sql`SELECT version FROM gtfs_versions WHERE import_date <= ${date} ORDER BY import_date DESC LIMIT 1`;
+
+    return result[0]?.version;
+}
+
+export function dateToTimeString(date: Date, moreThan24HourTime = true): string {
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+
+    if (moreThan24HourTime && hours < 3) {
+        hours += 24;
+    }
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }

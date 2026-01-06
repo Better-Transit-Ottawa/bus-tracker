@@ -1,7 +1,7 @@
 import GtfsRealtimeBindings from "gtfs-realtime-bindings";
 import { config } from "./config.ts";
 import sql from "./database.ts";
-import { getServiceIds } from "./schedule.ts";
+import { getServiceIds, toDateString } from "./schedule.ts";
 
 const vehiclePositionsApi = "https://nextrip-public-api.azure-api.net/octranspo/gtfs-rt-vp/beta/v1/VehiclePositions";
 const tripUpdatesApi = "https://nextrip-public-api.azure-api.net/octranspo/gtfs-rt-tp/beta/v1/TripUpdates";
@@ -31,22 +31,23 @@ export async function fetchRealtime(): Promise<void> {
     const time = new Date();
     console.log(`Fetched GTFS-Realtime data at ${new Date(time).toISOString()}`);
 
-    const serviceIds = await getServiceIds(getCurrentDate());
     const promises = [];
 
     for (const entity of positionsFeed.entity) {
         if (entity.vehicle && entity.vehicle.vehicle && entity.vehicle.vehicle.id && entity.vehicle.position) {
             const busId = entity.vehicle.vehicle.id;
             const recievedTripId = entity.vehicle.trip?.tripId || null;
+            const date = entity.vehicle.trip ? startDateToDate(entity.vehicle.trip.startDate!) : getCurrentDate();
+            const serviceIds = await getServiceIds(date);
             const tripId = recievedTripId ? await getRealTripId(serviceIds, recievedTripId, entity.vehicle.trip!.routeId!, entity.vehicle.trip!.startTime!) : null;
             const latitude = entity.vehicle.position.latitude;
             const longitude = entity.vehicle.position.longitude;
             const speed = entity.vehicle.position.speed || null;
-            const date = entity.vehicle.trip ? startDateToDate(entity.vehicle.trip.startDate!) : getCurrentDate();
             const recorded_timestamp = timestampToTimeString(date, entity.vehicle.timestamp!.toString());
             const delayInfo = (recievedTripId && tripId) ? await getDelayInfo(tripFeed, date, recievedTripId, tripId) : null;
             const delay = delayInfo?.delay || null;
             const nextStopId = delayInfo?.nextStopId || null;
+
 
             promises.push((async () => {
                 await sql`
@@ -152,10 +153,6 @@ export function startDateToDate(startDate: string): Date {
     const day = parseInt(startDate.slice(6, 8));
 
     return new Date(year, month, day);
-}
-
-export function toDateString(date: Date): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 /**

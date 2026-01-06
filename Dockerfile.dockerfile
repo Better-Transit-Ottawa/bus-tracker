@@ -5,5 +5,5 @@ COPY src src
 COPY node_modules ./node_modules
 COPY config.json config.json
 
-EXPOSE 8080
+EXPOSE 3000
 CMD ["npm", "start"]

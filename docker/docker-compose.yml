@@ -5,6 +5,8 @@ services:
     container_name: gtfs_app
     build: ../
     restart: always
+    ports:
+      - 3009:3000
   database:
     container_name: gtfs_database
     image: postgres:18

@@ -16,7 +16,15 @@ const sql = postgres({
     user: config.db.user,
     password: config.db.password,
     onnotice: () => void 0,
-    max: 75
+    max: 75,
+    types: {
+        date: {
+            to: 1184,
+            from: [1082, 1114, 1184],
+            serialize: (x: string | Date) => (x instanceof Date ? x : new Date(x)).toISOString(),
+            parse: (x: string) => new Date(x + (x.includes('+') ? '' : 'Z'))
+        }
+    }
 });
 
 // Run schema

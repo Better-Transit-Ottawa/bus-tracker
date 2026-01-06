@@ -12,7 +12,11 @@
     "import-gtfs": "ts-node ./src/importGtfs.ts"
   },
   "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "fastify": "^5.6.2",
     "gtfs-realtime-bindings": "^1.1.1",
+    "i": "^0.3.7",
+    "npm": "^11.7.0",
     "postgres": "^3.4.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

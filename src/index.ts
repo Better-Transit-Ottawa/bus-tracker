@@ -6,6 +6,8 @@ import cors from "@fastify/cors";
 import { createListBlocksEndpoint } from "./endpoints/listBlocks.ts";
 import { createListVehiclesEndpoint } from "./endpoints/listVehicles.ts";
 import { config } from "./utils/config.ts";
+import { createRouteDetailsEndpoint } from "./endpoints/routeDetails.ts";
+import { createListRoutesEndpoint } from "./endpoints/listRoutes.ts";
 
 const interval = 60 * 1000;
 const server: FastifyInstance = Fastify()
@@ -19,6 +21,8 @@ createBusCountEndpoint(server);
 createBlockDetailsEndpoint(server);
 createListBlocksEndpoint(server);
 createListVehiclesEndpoint(server);
+createRouteDetailsEndpoint(server);
+createListRoutesEndpoint(server);
 
 try {
     await server.register(cors, {

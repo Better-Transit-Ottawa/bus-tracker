@@ -84,6 +84,27 @@ export async function fetchRealtime(): Promise<void> {
                     }
                 }
             })());
+
+            // Delete any cancellation
+            promises.push(sql`
+                DELETE FROM canceled
+                WHERE date = ${date} AND trip_id = ${tripId}
+            `);
+        } else if (entity.vehicle && entity.vehicle.trip
+                && entity.vehicle.trip.scheduleRelationship && [2, 3].includes(entity.vehicle.trip.scheduleRelationship)) {
+
+            const recievedTripId = entity.vehicle.trip?.tripId || null;
+            const date = entity.vehicle.trip ? startDateToDate(entity.vehicle.trip.startDate!) : getCurrentDate();
+            const serviceIds = await getServiceIds(date);
+            const tripId = recievedTripId ? await getRealTripId(serviceIds, recievedTripId, entity.vehicle.trip!.routeId!, entity.vehicle.trip!.startTime!) : null;
+            const scheduleRelationship = entity.vehicle.trip.scheduleRelationship;
+
+            promises.push(sql`
+                INSERT INTO canceled (time, date, trip_id, schedule_relationship)
+                VALUES (${time}, ${date}, ${tripId}, ${scheduleRelationship})
+                ON CONFLICT (date, trip_id)
+                DO UPDATE SET schedule_relationship = ${scheduleRelationship}
+            `);
         }
     }
 

@@ -30,6 +30,14 @@ CREATE TABLE IF NOT EXISTS vehicles (
     PRIMARY KEY (time, id)
 );
 
+CREATE TABLE IF NOT EXISTS canceled (
+    time TIMESTAMP,
+    date DATE,
+    trip_id TEXT,
+    schedule_relationship INTEGER,
+    PRIMARY KEY (date, trip_id)
+);
+
 CREATE TABLE IF NOT EXISTS stops (
     gtfs_version NUMERIC,
     trip_id TEXT,

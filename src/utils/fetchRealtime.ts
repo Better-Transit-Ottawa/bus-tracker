@@ -90,14 +90,20 @@ export async function fetchRealtime(): Promise<void> {
                 DELETE FROM canceled
                 WHERE date = ${date} AND trip_id = ${tripId}
             `);
-        } else if (entity.vehicle && entity.vehicle.trip
-                && entity.vehicle.trip.scheduleRelationship && [2, 3].includes(entity.vehicle.trip.scheduleRelationship)) {
+        }
+    }
 
-            const recievedTripId = entity.vehicle.trip?.tripId || null;
-            const date = entity.vehicle.trip ? startDateToDate(entity.vehicle.trip.startDate!) : getCurrentDate();
+    // Look for canceled buses
+    for (const entity of tripFeed.entity) {
+        if (entity.tripUpdate
+                && entity.tripUpdate.trip
+                && entity.tripUpdate.trip.scheduleRelationship
+                && [2, 3].includes(entity.tripUpdate.trip.scheduleRelationship)) {
+            const recievedTripId = entity.tripUpdate.trip?.tripId || null;
+            const date = entity.tripUpdate.trip ? startDateToDate(entity.tripUpdate.trip.startDate!) : getCurrentDate();
             const serviceIds = await getServiceIds(date);
-            const tripId = recievedTripId ? await getRealTripId(serviceIds, recievedTripId, entity.vehicle.trip!.routeId!, entity.vehicle.trip!.startTime!) : null;
-            const scheduleRelationship = entity.vehicle.trip.scheduleRelationship;
+            const tripId = recievedTripId ? await getRealTripId(serviceIds, recievedTripId, entity.tripUpdate.trip!.routeId!, entity.tripUpdate.trip!.startTime!) : null;
+            const scheduleRelationship = entity.tripUpdate.trip.scheduleRelationship;
 
             promises.push(sql`
                 INSERT INTO canceled (time, date, trip_id, schedule_relationship)

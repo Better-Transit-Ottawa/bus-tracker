@@ -24,9 +24,6 @@ const opts: RouteShorthandOptions = {
                 properties: {
                     routeId: {
                         type: "string"
-                    },
-                    name: {
-                        type: "string"
                     }
                 }
             }
@@ -43,8 +40,7 @@ async function endpoint(request: FastifyRequest<{Querystring: ListRoutessQuery}>
         WHERE date = ${dayOnlyDate.toLocaleDateString()}`;
 
     return blocks.map((b) => ({
-        routeId: b.route_id,
-        name: b.route_id + "H"
+        routeId: b.route_id
     }));
 }
 

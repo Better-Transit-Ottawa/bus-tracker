@@ -89,7 +89,7 @@ async function endpoint(request: FastifyRequest<{Querystring: BlockDetailsQuery}
                     blocks[blockId] = block;
 
                     // More buses to check, if they haven't been processed already
-                    busesToProcess.push(...initialBlock.map((v) => v.busId).filter((v) => !!v && !processedBusIds.has(v)) as string[])
+                    busesToProcess.push(...block.map((v) => v.busId).filter((v) => !!v && !processedBusIds.has(v)) as string[])
                 }
             }
         }

@@ -10,7 +10,14 @@ import { createRouteDetailsEndpoint } from "./endpoints/routeDetails.ts";
 import { createListRoutesEndpoint } from "./endpoints/listRoutes.ts";
 
 const interval = 60 * 1000;
-const server: FastifyInstance = Fastify()
+const server: FastifyInstance = Fastify({
+    logger: {
+        level: "error",
+        transport: {
+            target: "pino-pretty"
+        }
+    }
+});
 
 setInterval(() => {
     fetchRealtime().catch((e) => console.error("Error fetching real-time data:", e));

@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, RouteShorthandOptions } from "fastify"
-import { dateToTimeString, getDateFromTimestamp, getGtfsVersion, getServiceDayBoundariesWithPadding, getServiceIds, type ServiceDay } from "../utils/schedule.ts";
+import { dateToTimeString, getDateFromTimestamp, getGtfsVersion, getServiceDayBoundariesWithPadding, getServiceIds, timeStringDiff, type ServiceDay } from "../utils/schedule.ts";
 import sql from "../utils/database.ts";
 
 interface BlockDetailsQuery {
@@ -100,15 +100,18 @@ async function endpoint(request: FastifyRequest<{Querystring: BlockDetailsQuery}
 
 async function getBlockData(blockId: string, gtfsVersion: number, serviceIds: string[], serviceDay: ServiceDay, date: Date): Promise<BlockData[]> {
     const blockData = await sql`SELECT route_id, b.trip_id, trip_headsign, route_direction, start_time, end_time,
-            id as bus_id, time as actual_start_time, actual_end_time, next_stop_id, delay_min,
-            (SELECT schedule_relationship FROM canceled c WHERE date = ${date.toLocaleDateString()} AND trip_id = b.trip_id)
+            id as bus_id, actual_start_time, actual_end_time, delay_min,
+            (SELECT schedule_relationship FROM canceled c WHERE date = ${date.toLocaleDateString()} AND trip_id = b.trip_id),
+            (SELECT next_stop_id FROM vehicles v WHERE time > ${serviceDay.start}
+                AND time < ${serviceDay.end} AND v.trip_id = b.trip_id
+                AND v2.id = v.id ORDER BY trip_id, time DESC LIMIT 1)
         FROM blocks b
         LEFT JOIN LATERAL
-            (SELECT v.id, v.time, v.trip_id FROM vehicles v WHERE time > ${serviceDay.start}
+            (SELECT v.id, recorded_timestamp as actual_start_time, v.trip_id FROM vehicles v WHERE time > ${serviceDay.start}
                 AND time < ${serviceDay.end} AND v.trip_id = b.trip_id ORDER BY trip_id, time ASC LIMIT 1) as v2 ON b.trip_id = v2.trip_id
         LEFT JOIN LATERAL
-            (SELECT v.time as actual_end_time, next_stop_id, delay_min, v.trip_id FROM vehicles v WHERE time > ${serviceDay.start}
-                AND time < ${serviceDay.end} AND v.trip_id = b.trip_id
+            (SELECT recorded_timestamp as actual_end_time, delay_min, v.trip_id FROM vehicles v WHERE time > ${serviceDay.start}
+                AND time < ${serviceDay.end} AND v.trip_id = b.trip_id AND next_stop_id IS NOT NULL
                 AND v2.id = v.id ORDER BY trip_id, time DESC LIMIT 1) as v3 ON b.trip_id = v3.trip_id
         WHERE gtfs_version = ${gtfsVersion} AND service_id IN ${sql(serviceIds)} AND block_id = ${blockId}
         ORDER BY start_time ASC`;
@@ -120,9 +123,9 @@ async function getBlockData(blockId: string, gtfsVersion: number, serviceIds: st
         routeDirection: v.route_direction as number,
         scheduledStartTime: v.start_time as string,
         scheduledEndTime: v.end_time as string,
-        actualStartTime: v.actual_start_time ? dateToTimeString(v.actual_start_time as Date) : null,
-        actualEndTime: (v.actual_end_time && (!v.next_stop_id || new Date().getTime() - (v.actual_end_time as Date).getTime() > 1000 * 60 * 30))
-            ? dateToTimeString(v.actual_end_time as Date) : null,
+        actualStartTime: v.actual_start_time ? v.actual_start_time : null,
+        actualEndTime: (v.actual_end_time && (!v.next_stop_id || (timeStringDiff(dateToTimeString(new Date(), true), v.actual_end_time)) > 60 * 30))
+                    ? v.actual_end_time : null,
         delay: v.delay_min as number,
         canceled: v.schedule_relationship,
         busId: v.bus_id as string

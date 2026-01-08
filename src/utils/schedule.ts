@@ -101,3 +101,15 @@ export function dateToTimeString(date: Date, moreThan24HourTime = true): string 
 
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
+
+export function timeStringDiff(timeString1: string, timeString2: string): number {
+    const hourPart1 = parseInt(timeString1.substring(0, 2));
+    const minutePart1 = parseInt(timeString1.substring(3, 5));
+    const secondPart1 = parseInt(timeString1.substring(6, 8));
+
+    const hourPart2 = parseInt(timeString2.substring(0, 2));
+    const minutePart2 = parseInt(timeString2.substring(3, 5));
+    const secondPart2 = parseInt(timeString2.substring(6, 8));
+
+    return (hourPart1 - hourPart2) * 60 * 60 + (minutePart1 - minutePart2) * 60 + (secondPart1 - secondPart2);
+}

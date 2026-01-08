@@ -59,7 +59,7 @@ async function getRouteData(routeId: string, gtfsVersion: number, serviceIds: st
             (SELECT schedule_relationship FROM canceled c WHERE date = ${date.toLocaleDateString()} AND trip_id = b.trip_id),
             (SELECT next_stop_id FROM vehicles v WHERE time > ${serviceDay.start}
                 AND time < ${serviceDay.end} AND v.trip_id = b.trip_id
-                AND v2.id = v.id ORDER BY trip_id, time DESC LIMIT 1),
+                AND v1.id = v.id ORDER BY trip_id, time DESC LIMIT 1),
             (SELECT s1.arrival_time as second_last_stop_time FROM 
                     -- Last two stops
                     (SELECT s.arrival_time, stop_sequence FROM stops s
@@ -68,12 +68,17 @@ async function getRouteData(routeId: string, gtfsVersion: number, serviceIds: st
                 ORDER BY s1.stop_sequence ASC LIMIT 1)
         FROM blocks b 
         LEFT JOIN LATERAL
-            (SELECT v.id, recorded_timestamp as actual_start_time, v.trip_id FROM vehicles v WHERE time > ${serviceDay.start}
-                AND time < ${serviceDay.end} AND v.trip_id = b.trip_id ORDER BY trip_id, time ASC LIMIT 1) as v2 ON b.trip_id = v2.trip_id
+            (SELECT v.id, v.trip_id FROM vehicles v WHERE time > ${serviceDay.start}
+                AND time < ${serviceDay.end} AND v.trip_id = b.trip_id
+                AND recorded_timestamp > start_time ORDER BY trip_id, time ASC LIMIT 1) as v1 ON b.trip_id = v1.trip_id
+        LEFT JOIN LATERAL    
+            (SELECT recorded_timestamp as actual_start_time, v.trip_id FROM vehicles v WHERE time > ${serviceDay.start}
+                AND time < ${serviceDay.end} AND v.trip_id = b.trip_id 
+                AND v1.id = v.id ORDER BY trip_id, time ASC LIMIT 1) as v2 ON b.trip_id = v2.trip_id
         LEFT JOIN LATERAL
             (SELECT recorded_timestamp as actual_end_time, delay_min, v.trip_id FROM vehicles v WHERE time > ${serviceDay.start}
                 AND time < ${serviceDay.end} AND v.trip_id = b.trip_id AND next_stop_id IS NOT NULL
-                AND v2.id = v.id ORDER BY trip_id, time DESC LIMIT 1) as v3 ON b.trip_id = v3.trip_id
+                AND v1.id = v.id ORDER BY trip_id, time DESC LIMIT 1) as v3 ON b.trip_id = v3.trip_id
         WHERE gtfs_version = ${gtfsVersion} AND service_id IN ${sql(serviceIds)} AND route_id = ${routeId}
         ORDER BY start_time ASC`;
 

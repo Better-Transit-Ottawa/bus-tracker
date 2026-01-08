@@ -113,3 +113,22 @@ export function timeStringDiff(timeString1: string, timeString2: string): number
 
     return (hourPart1 - hourPart2) * 60 * 60 + (minutePart1 - minutePart2) * 60 + (secondPart1 - secondPart2);
 }
+
+export function addToTimeString(timeString: string, seconds: number): string {
+    let hour = parseInt(timeString.substring(0, 2));
+    let minute = parseInt(timeString.substring(3, 5));
+    let second = parseInt(timeString.substring(6, 8));
+
+    second += seconds;
+    if (second >= 60) {
+        minute += Math.floor(second / 60);
+        second = second % 60;
+    }
+
+    if (minute > 60) {
+        hour += Math.floor(minute / 60);
+        minute = minute % 60;
+    }
+
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`;
+}

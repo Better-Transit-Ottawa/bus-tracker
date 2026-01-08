@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, RouteShorthandOptions } from "fastify"
-import { dateToTimeString, getDateFromTimestamp, getGtfsVersion, getServiceDayBoundariesWithPadding, getServiceIds, timeStringDiff, type ServiceDay } from "../utils/schedule.ts";
+import { addToTimeString, dateToTimeString, getDateFromTimestamp, getGtfsVersion, getServiceDayBoundariesWithPadding, getServiceIds, timeStringDiff, type ServiceDay } from "../utils/schedule.ts";
 import sql from "../utils/database.ts";
 
 interface RouteDetailsQuery {
@@ -59,7 +59,13 @@ async function getRouteData(routeId: string, gtfsVersion: number, serviceIds: st
             (SELECT schedule_relationship FROM canceled c WHERE date = ${date.toLocaleDateString()} AND trip_id = b.trip_id),
             (SELECT next_stop_id FROM vehicles v WHERE time > ${serviceDay.start}
                 AND time < ${serviceDay.end} AND v.trip_id = b.trip_id
-                AND v2.id = v.id ORDER BY trip_id, time DESC LIMIT 1)
+                AND v2.id = v.id ORDER BY trip_id, time DESC LIMIT 1),
+            (SELECT s1.arrival_time as second_last_stop_time FROM 
+                    -- Last two stops
+                    (SELECT s.arrival_time, stop_sequence FROM stops s
+                        WHERE s.trip_id = b.trip_id ORDER BY arrival_time desc LIMIT 2) as s1
+                -- Only second last stop
+                ORDER BY s1.stop_sequence ASC LIMIT 1)
         FROM blocks b 
         LEFT JOIN LATERAL
             (SELECT v.id, recorded_timestamp as actual_start_time, v.trip_id FROM vehicles v WHERE time > ${serviceDay.start}
@@ -71,20 +77,30 @@ async function getRouteData(routeId: string, gtfsVersion: number, serviceIds: st
         WHERE gtfs_version = ${gtfsVersion} AND service_id IN ${sql(serviceIds)} AND route_id = ${routeId}
         ORDER BY start_time ASC`;
 
-    return (blockData.map((v) => ({
-        tripId: v.trip_id as string,
-        headSign: v.trip_headsign as string,
-        routeDirection: v.route_direction as number,
-        scheduledStartTime: v.start_time as string,
-        scheduledEndTime: v.end_time as string,
-        actualStartTime: v.actual_start_time ? v.actual_start_time : null,
-        actualEndTime: (v.actual_end_time && (!v.next_stop_id || (timeStringDiff(dateToTimeString(new Date(), true), v.actual_end_time)) > 60 * 30))
-            ? v.actual_end_time : null,
-        delay: v.delay_min as number,
-        canceled: v.schedule_relationship,
-        busId: v.bus_id as string,
-        blockId: v.block_id as string
-    })));
+    return (blockData.map((v) => {
+        const isTripOver = !v.next_stop_id || (timeStringDiff(dateToTimeString(new Date(), true), v.actual_end_time)) > 60 * 30;
+        let actualEndTime: string | null = (v.actual_end_time && isTripOver)
+                ? v.actual_end_time
+                : null;
+        if (actualEndTime && isTripOver && v.second_last_stop_time && v.end_time) {
+            const extraTime = timeStringDiff(v.end_time, v.second_last_stop_time);
+            actualEndTime = addToTimeString(actualEndTime, extraTime);
+        }
+        
+        return {
+            tripId: v.trip_id as string,
+            headSign: v.trip_headsign as string,
+            routeDirection: v.route_direction as number,
+            scheduledStartTime: v.start_time as string,
+            scheduledEndTime: v.end_time as string,
+            actualStartTime: v.actual_start_time ? v.actual_start_time : null,
+            actualEndTime,
+            delay: v.delay_min as number,
+            canceled: v.schedule_relationship,
+            busId: v.bus_id as string,
+            blockId: v.block_id as string
+        };
+    }));
 }
 
 export function createRouteDetailsEndpoint(server: FastifyInstance) {

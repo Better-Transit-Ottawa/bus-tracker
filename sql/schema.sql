@@ -92,6 +92,9 @@ CREATE INDEX IF NOT EXISTS vehicles_id ON vehicles (id);
 CREATE INDEX IF NOT EXISTS blocks_block_id ON blocks (block_id);
 CREATE INDEX IF NOT EXISTS blocks_start_time ON blocks (start_time);
 CREATE INDEX IF NOT EXISTS blocks_version ON blocks (gtfs_version, service_id);
-CREATE INDEX IF NOT EXISTS blocks_version_block ON blocks (gtfs_version, service_id, block_id);
+CREATE INDEX IF NOT EXISTS blocks_version_block
+ON blocks (gtfs_version, service_id, block_id);
 
 CREATE INDEX IF NOT EXISTS blocks_data_route ON blocks (route_id);
+
+CREATE INDEX IF NOT EXISTS stops_arrival_time ON stops (trip_id, arrival_time);

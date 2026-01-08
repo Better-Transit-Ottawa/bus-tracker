@@ -77,8 +77,11 @@ async function getRouteData(routeId: string, gtfsVersion: number, serviceIds: st
         WHERE gtfs_version = ${gtfsVersion} AND service_id IN ${sql(serviceIds)} AND route_id = ${routeId}
         ORDER BY start_time ASC`;
 
+    const currentDate = new Date();
     return (blockData.map((v) => {
-        const isTripOver = !v.next_stop_id || (timeStringDiff(new Date().toLocaleTimeString(), v.actual_end_time)) > 60 * 30;
+        const isTripOver = !v.next_stop_id 
+            || (timeStringDiff(currentDate.toLocaleTimeString(), v.actual_end_time)) > 60 * 30
+            || date.toLocaleDateString() !== currentDate.toLocaleDateString();
         let actualEndTime: string | null = (v.actual_end_time && isTripOver)
                 ? v.actual_end_time
                 : null;

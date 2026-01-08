@@ -123,7 +123,7 @@ async function getBlockData(blockId: string, gtfsVersion: number, serviceIds: st
         ORDER BY start_time ASC`;
 
     return (blockData.map((v) => {
-        const isTripOver = !v.next_stop_id || (timeStringDiff(dateToTimeString(new Date(), true), v.actual_end_time)) > 60 * 30;
+        const isTripOver = !v.next_stop_id || (timeStringDiff(new Date().toLocaleTimeString(), v.actual_end_time)) > 60 * 30;
         let actualEndTime: string | null = (v.actual_end_time && isTripOver)
                 ? v.actual_end_time
                 : null;

@@ -36,7 +36,7 @@ try {
         origin: "*"
     });
 
-    await server.listen({ port: config.port ?? 3000 })
+    await server.listen({ port: config.port ?? 3000, host: config.host ?? "0.0.0.0" })
 
 } catch (err) {
     console.error(err);

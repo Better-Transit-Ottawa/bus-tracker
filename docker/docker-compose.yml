@@ -3,7 +3,7 @@ name: bus-tracker
 services:
   app:
     container_name: gtfs_app
-    build: ../
+    image: ghcr.io/better-transit-ottawa/bus-tracker:latest
     restart: always
     volumes:
       - ./config.json:/usr/src/app/config.json:ro

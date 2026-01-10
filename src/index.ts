@@ -24,9 +24,14 @@ const server: FastifyInstance = Fastify({
 });
 
 // Schedule GTFS data fetch at 1 AM daily
-schedule.scheduleJob('0 0 1 * * *', () => 
-    fetchGtfs().catch(e => console.error("Error fetching GTFS data:", e))
-)
+schedule.scheduleJob(
+  { rule: '0 0 1 * * *', tz: 'America/Toronto' },
+  () => {
+    fetchGtfs().catch(e =>
+      console.error('Error fetching GTFS data:', e)
+    );
+  }
+);
 if (!fs.existsSync(schedulePath)) {
     fetchGtfs().catch(e => console.error("Error fetching GTFS data:", e));
 }

@@ -42,8 +42,8 @@ async function endpoint(request: FastifyRequest<{Querystring: RouteDetailsQuery}
 
     const date = new Date(request.query.date);
     const dayOnlyDate = getDateFromTimestamp(date);
-    const serviceIds = await getServiceIds(dayOnlyDate);
     const gtfsVersion = await getGtfsVersion(dayOnlyDate);
+    const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
     const serviceDay = getServiceDayBoundariesWithPadding(dayOnlyDate);
 
     const trips = await getRouteData(routeId, gtfsVersion, serviceIds, serviceDay, date);

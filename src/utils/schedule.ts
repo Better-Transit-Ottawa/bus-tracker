@@ -15,7 +15,7 @@ export interface ServiceDay {
     end: Date;
 }
 
-export async function getServiceIds(date: Date): Promise<string[]> {
+export async function getServiceIds(gtfsVersion: number, date: Date): Promise<string[]> {
     const dateString = toDateString(date);
     const query = dateToServiceIdQuery(date);
 
@@ -28,9 +28,12 @@ export async function getServiceIds(date: Date): Promise<string[]> {
         saturday = ${query.saturday} AND
         sunday = ${query.sunday} AND
         start_date <= ${dateString} AND
-        end_date >= ${dateString}
+        end_date >= ${dateString} AND
+        gtfs_version = ${gtfsVersion}
     `;
-    const serviceIdsExceptions = await sql`SELECT service_id, exception_type FROM calendar_dates WHERE date = ${dateString}`;
+    const serviceIdsExceptions = await sql`SELECT service_id, exception_type
+        FROM calendar_dates
+        WHERE date = ${dateString} AND gtfs_version = ${gtfsVersion}`;
 
     const initialServiceIds = new Set<string>(serviceIds.map((row: any) => row.service_id));
     for (const row of serviceIdsExceptions) {

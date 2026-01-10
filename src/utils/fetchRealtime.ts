@@ -1,7 +1,7 @@
 import GtfsRealtimeBindings from "gtfs-realtime-bindings";
 import { config } from "./config.ts";
 import sql from "./database.ts";
-import { getServiceIds, toDateString } from "./schedule.ts";
+import { getGtfsVersion, getServiceIds, toDateString } from "./schedule.ts";
 
 const vehiclePositionsApi = "https://nextrip-public-api.azure-api.net/octranspo/gtfs-rt-vp/beta/v1/VehiclePositions";
 const tripUpdatesApi = "https://nextrip-public-api.azure-api.net/octranspo/gtfs-rt-tp/beta/v1/TripUpdates";
@@ -38,7 +38,8 @@ export async function fetchRealtime(): Promise<void> {
             const busId = entity.vehicle.vehicle.id;
             const recievedTripId = entity.vehicle.trip?.tripId || null;
             const date = entity.vehicle.trip ? startDateToDate(entity.vehicle.trip.startDate!) : getCurrentDate();
-            const serviceIds = await getServiceIds(date);
+            const gtfsVersion = await getGtfsVersion(date);
+            const serviceIds = await getServiceIds(gtfsVersion, date);
             const tripId = recievedTripId ? await getRealTripId(serviceIds, recievedTripId, entity.vehicle.trip!.routeId!, entity.vehicle.trip!.startTime!) : null;
             const latitude = entity.vehicle.position.latitude;
             const longitude = entity.vehicle.position.longitude;
@@ -101,7 +102,8 @@ export async function fetchRealtime(): Promise<void> {
                 && [2, 3].includes(entity.tripUpdate.trip.scheduleRelationship)) {
             const recievedTripId = entity.tripUpdate.trip?.tripId || null;
             const date = entity.tripUpdate.trip ? startDateToDate(entity.tripUpdate.trip.startDate!) : getCurrentDate();
-            const serviceIds = await getServiceIds(date);
+            const gtfsVersion = await getGtfsVersion(date);
+            const serviceIds = await getServiceIds(gtfsVersion, date);
             const tripId = recievedTripId ? await getRealTripId(serviceIds, recievedTripId, entity.tripUpdate.trip!.routeId!, entity.tripUpdate.trip!.startTime!) : null;
             const scheduleRelationship = entity.tripUpdate.trip.scheduleRelationship;
 

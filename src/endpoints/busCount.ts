@@ -22,8 +22,8 @@ const opts: RouteShorthandOptions = {
 async function endpoint(request: FastifyRequest<{Querystring: BusCountQuery}>, reply: FastifyReply) {
     const date = new Date(request.query.date);
     const dayOnlyDate = getDateFromTimestamp(date);
-    const serviceIds = await getServiceIds(dayOnlyDate);
     const gtfsVersion = await getGtfsVersion(dayOnlyDate);
+    const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
     const beforeDate = new Date(date.getTime() - 1000 * 60 * 2);
     const afterDate = new Date(date.getTime() + 1000 * 60 * 2);
     const timeString = dateToTimeString(date);

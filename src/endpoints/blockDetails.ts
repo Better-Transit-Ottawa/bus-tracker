@@ -55,8 +55,8 @@ async function endpoint(request: FastifyRequest<{Querystring: BlockDetailsQuery}
 
     const date = new Date(request.query.date);
     const dayOnlyDate = getDateFromTimestamp(date);
-    const serviceIds = await getServiceIds(dayOnlyDate);
     const gtfsVersion = await getGtfsVersion(dayOnlyDate);
+    const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
     const serviceDay = getServiceDayBoundariesWithPadding(dayOnlyDate);
 
     if (!blockId) {

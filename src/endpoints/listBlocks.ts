@@ -38,8 +38,8 @@ const opts: RouteShorthandOptions = {
 async function endpoint(request: FastifyRequest<{Querystring: ListBlocksQuery}>) {
     const date = new Date(request.query.date);
     const dayOnlyDate = getDateFromTimestamp(date);
-    const serviceIds = await getServiceIds(dayOnlyDate);
     const gtfsVersion = await getGtfsVersion(dayOnlyDate);
+    const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
 
     const blocks = await sql`SELECT block_id,
             count(DISTINCT bus_id) as bus_count

@@ -42,6 +42,7 @@ test/*.js
 # Config files
 config.json
 docker/database.env
+docker/schedule
 
 .vscode
 

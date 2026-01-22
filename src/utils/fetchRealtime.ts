@@ -57,7 +57,8 @@ export async function fetchRealtime(): Promise<void> {
                 `;
 
                 // Check if it is starting a new trip
-                if (tripId && parseInt(entity.vehicle!.trip!.routeId ?? "900") < 800) {
+                const routeIdInt = parseInt(entity.vehicle!.trip!.routeId ?? "900");
+                if (tripId && (routeIdInt < 800 || isNaN(routeIdInt))) {
                     const scheduledStartTime = entity.vehicle!.trip!.startTime!;
                     const existingTrip = await sql`
                         SELECT * from block_data

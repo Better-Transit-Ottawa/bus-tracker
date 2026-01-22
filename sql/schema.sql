@@ -94,6 +94,8 @@ CREATE INDEX IF NOT EXISTS blocks_start_time ON blocks (start_time);
 CREATE INDEX IF NOT EXISTS blocks_version ON blocks (gtfs_version, service_id);
 CREATE INDEX IF NOT EXISTS blocks_version_block
 ON blocks (gtfs_version, service_id, block_id);
+CREATE INDEX IF NOT EXISTS blocks_version_route
+ON blocks (gtfs_version, service_id, route_id);
 
 CREATE INDEX IF NOT EXISTS blocks_data_route ON blocks (route_id);
 

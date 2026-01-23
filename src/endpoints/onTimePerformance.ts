@@ -27,6 +27,11 @@ interface Aggregate {
     canceledTrips: number;
 }
 
+interface AggregateWithDelays {
+    counts: Aggregate;
+    delays: number[];
+}
+
 const opts: RouteShorthandOptions = {
     schema: {
         querystring: {
@@ -74,15 +79,54 @@ function bucketForTrip(trip: TripRow): string | null {
     return bucket ? bucket.label : null;
 }
 
-function updateAggregate(agg: Aggregate, onTime: boolean | null, isCanceled: boolean): void {
-    agg.totalScheduled += 1;
+function updateAggregate(agg: AggregateWithDelays, onTime: boolean | null, isCanceled: boolean, delayMinutes: number | null): void {
+    agg.counts.totalScheduled += 1;
     if (isCanceled) {
-        agg.canceledTrips += 1;
+        agg.counts.canceledTrips += 1;
     }
     if (onTime !== null) {
-        agg.evaluatedTrips += 1;
-        if (onTime) agg.onTimeTrips += 1;
+        agg.counts.evaluatedTrips += 1;
+        if (onTime) agg.counts.onTimeTrips += 1;
     }
+    if (delayMinutes !== null) {
+        agg.delays.push(Math.abs(delayMinutes));
+    }
+}
+
+function createAggregate(): AggregateWithDelays {
+    return {
+        counts: { totalScheduled: 0, evaluatedTrips: 0, onTimeTrips: 0, canceledTrips: 0 },
+        delays: []
+    };
+}
+
+function withStats(agg: AggregateWithDelays) {
+    const base = withPercent(agg.counts);
+    const delayValues = agg.delays.length ? [...agg.delays].sort((a, b) => a - b) : null;
+    if (!delayValues) {
+        return {
+            ...base,
+            avgDelayMin: null,
+            medianDelayMin: null,
+            maxDelayMin: null,
+            p90DelayMin: null
+        };
+    }
+
+    const sum = delayValues.reduce((acc, v) => acc + v, 0);
+    const mid = Math.floor(delayValues.length / 2);
+    const median = delayValues.length % 2 === 0
+        ? (delayValues[mid - 1]! + delayValues[mid]!) / 2
+        : delayValues[mid]!;
+    const p90Index = Math.max(0, Math.ceil(delayValues.length * 0.9) - 1);
+
+    return {
+        ...base,
+        avgDelayMin: sum / delayValues.length,
+        medianDelayMin: median,
+        maxDelayMin: delayValues[delayValues.length - 1]!,
+        p90DelayMin: delayValues[p90Index]!
+    };
 }
 
 async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, reply: FastifyReply) {
@@ -129,45 +173,45 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
         LEFT JOIN canceled c ON c.trip_id = tm.trip_id AND c.date = ${dayOnlyDate.toLocaleDateString()}
     `;
 
-    const overall: Aggregate = { totalScheduled: 0, evaluatedTrips: 0, onTimeTrips: 0, canceledTrips: 0 };
-    const routes: Record<string, Aggregate> = {};
-    const buckets: Record<string, Aggregate> = Object.fromEntries(timeBuckets.map((b) => [b.label, { totalScheduled: 0, evaluatedTrips: 0, onTimeTrips: 0, canceledTrips: 0 }]));
-    const routeOverall: Aggregate = { totalScheduled: 0, evaluatedTrips: 0, onTimeTrips: 0, canceledTrips: 0 };
-    const routeBuckets: Record<string, Aggregate> = Object.fromEntries(timeBuckets.map((b) => [b.label, { totalScheduled: 0, evaluatedTrips: 0, onTimeTrips: 0, canceledTrips: 0 }]));
+    const overall = createAggregate();
+    const routes: Record<string, AggregateWithDelays> = {};
+    const buckets: Record<string, AggregateWithDelays> = Object.fromEntries(timeBuckets.map((b) => [b.label, createAggregate()]));
+    const routeOverall = createAggregate();
+    const routeBuckets: Record<string, AggregateWithDelays> = Object.fromEntries(timeBuckets.map((b) => [b.label, createAggregate()]));
 
     for (const trip of trips) {
         const isCanceled = !!trip.schedule_relationship;
         const matchesRoute = !routeFilter || trip.route_id === routeFilter;
 
         const routeKey = `${trip.route_id}:${trip.route_direction}`;
-        routes[routeKey] ??= { totalScheduled: 0, evaluatedTrips: 0, onTimeTrips: 0, canceledTrips: 0 };
+        routes[routeKey] ??= createAggregate();
 
         const metricValue = computeMetric(trip, metric);
         const onTimeFromMetric = metricValue === null ? null : Math.abs(metricValue) <= threshold;
         const onTime = isCanceled ? (includeCanceled ? false : null) : onTimeFromMetric;
 
-        updateAggregate(overall, onTime, isCanceled);
-        updateAggregate(routes[routeKey], onTime, isCanceled);
+        updateAggregate(overall, onTime, isCanceled, metricValue);
+        updateAggregate(routes[routeKey], onTime, isCanceled, metricValue);
         if (matchesRoute) {
-            updateAggregate(routeOverall, onTime, isCanceled);
+            updateAggregate(routeOverall, onTime, isCanceled, metricValue);
         }
 
         const bucketLabel = bucketForTrip(trip);
         if (bucketLabel && buckets[bucketLabel]) {
-            updateAggregate(buckets[bucketLabel], onTime, isCanceled);
+            updateAggregate(buckets[bucketLabel], onTime, isCanceled, metricValue);
             if (matchesRoute && routeBuckets[bucketLabel]) {
-                updateAggregate(routeBuckets[bucketLabel], onTime, isCanceled);
+                updateAggregate(routeBuckets[bucketLabel], onTime, isCanceled, metricValue);
             }
         }
     }
 
     const routeList = Object.entries(routes).map(([key, agg]) => {
         const [routeId, direction] = key.split(":");
-        return { routeId, direction: Number(direction), ...withPercent(agg) };
+        return { routeId, direction: Number(direction), ...withStats(agg) };
     }).sort((a, b) => parseInt(a.routeId) - parseInt(b.routeId));
 
-    const bucketList = Object.entries(buckets).map(([label, agg]) => ({ label, ...withPercent(agg) }));
-    const routeBucketList = Object.entries(routeBuckets).map(([label, agg]) => ({ label, ...withPercent(agg) }));
+    const bucketList = Object.entries(buckets).map(([label, agg]) => ({ label, ...withStats(agg) }));
+    const routeBucketList = Object.entries(routeBuckets).map(([label, agg]) => ({ label, ...withStats(agg) }));
 
     return {
         date: dayOnlyDate.toISOString().slice(0, 10),
@@ -175,8 +219,8 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
         thresholdMinutes: threshold,
         includeCanceled,
         routeId: routeFilter,
-        overall: withPercent(overall),
-        routeSummary: routeFilter ? withPercent(routeOverall) : null,
+        overall: withStats(overall),
+        routeSummary: routeFilter ? withStats(routeOverall) : null,
         routes: routeList,
         timeOfDay: bucketList,
         routeTimeOfDay: routeFilter ? routeBucketList : null

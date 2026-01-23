@@ -199,7 +199,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
                    tr.avg_delay_min, tr.first_seen, c.schedule_relationship
             FROM trip_meta tm
             LEFT JOIN trip_runs tr ON tm.trip_id = tr.trip_id
-            LEFT JOIN canceled c ON c.trip_id = tm.trip_id AND c.date = ${dayOnlyDate.toLocaleDateString()}
+            LEFT JOIN canceled c ON c.trip_id = tm.trip_id AND c.date = ${dayOnlyDate}
         `;
 
         trips.push(...dayTrips);

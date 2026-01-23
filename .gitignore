@@ -49,3 +49,4 @@ docker/schedule
 data
 ignored
 database-data
+schedule

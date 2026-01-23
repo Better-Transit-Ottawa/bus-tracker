@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, RouteShorthandOptions } from "fastify";
-import { getDateFromTimestamp, getGtfsVersion, getServiceDayBoundariesWithPadding, getServiceIds } from "../utils/schedule.ts";
+import { dateToTimeString, getDateFromTimestamp, getGtfsVersion, getServiceDayBoundariesWithPadding, getServiceIds, timeStringDiff } from "../utils/schedule.ts";
 import sql from "../utils/database.ts";
 
 interface OnTimeQuery {
@@ -58,14 +58,12 @@ function intervalToMinutes(interval: string | null): number | null {
     return parts[0]! * 60 + parts[1]! + parts[2]! / 60;
 }
 
-function computeMetric(trip: TripRow, serviceDayStart: Date, metric: "avgObserved" | "start"): number | null {
+function computeMetric(trip: TripRow, metric: "avgObserved" | "start"): number | null {
     if (metric === "avgObserved") return trip.avg_delay_min;
 
-    const scheduledStart = intervalToMinutes(trip.start_time);
-    if (scheduledStart === null || !trip.first_seen) return null;
-
-    const minutesFromServiceStart = (trip.first_seen.getTime() - serviceDayStart.getTime()) / 60000;
-    return minutesFromServiceStart - scheduledStart;
+    if (!trip.start_time || !trip.first_seen) return null;
+    const observedStart = dateToTimeString(trip.first_seen, true);
+    return timeStringDiff(observedStart, trip.start_time) / 60;
 }
 
 function bucketForTrip(trip: TripRow): string | null {
@@ -144,7 +142,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
         const routeKey = `${trip.route_id}:${trip.route_direction}`;
         routes[routeKey] ??= { totalScheduled: 0, evaluatedTrips: 0, onTimeTrips: 0, canceledTrips: 0 };
 
-        const metricValue = computeMetric(trip, serviceDay.start, metric);
+        const metricValue = computeMetric(trip, metric);
         const onTimeFromMetric = metricValue === null ? null : Math.abs(metricValue) <= threshold;
         const onTime = isCanceled ? (includeCanceled ? false : null) : onTimeFromMetric;
 

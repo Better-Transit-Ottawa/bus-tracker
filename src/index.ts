@@ -12,6 +12,7 @@ import { createListRoutesEndpoint } from "./endpoints/listRoutes.ts";
 import schedule from 'node-schedule';
 import fs from 'fs';
 import { createListCanceledEndpoint } from "./endpoints/listCancelations.ts";
+import { createOnTimePerformanceEndpoint } from "./endpoints/onTimePerformance.ts";
 
 const schedulePath = 'schedule/schedule.zip';
 
@@ -51,6 +52,7 @@ createListVehiclesEndpoint(server);
 createRouteDetailsEndpoint(server);
 createListRoutesEndpoint(server);
 createListCanceledEndpoint(server);
+createOnTimePerformanceEndpoint(server);
 
 try {
     await server.register(cors, {

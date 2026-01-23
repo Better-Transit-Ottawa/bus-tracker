@@ -134,26 +134,13 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
 
     for (const trip of trips) {
         const isCanceled = !!trip.schedule_relationship;
-        if (isCanceled && !includeCanceled) {
-            overall.totalScheduled += 1;
-            overall.canceledTrips += 1;
-            const routeKey = `${trip.route_id}:${trip.route_direction}`;
-            routes[routeKey] ??= { totalScheduled: 0, evaluatedTrips: 0, onTimeTrips: 0, canceledTrips: 0 };
-            routes[routeKey].totalScheduled += 1;
-            routes[routeKey].canceledTrips += 1;
-            const bucketLabel = bucketForTrip(trip);
-            if (bucketLabel && buckets[bucketLabel]) {
-                buckets[bucketLabel].totalScheduled += 1;
-                buckets[bucketLabel].canceledTrips += 1;
-            }
-            continue;
-        }
-
-        const metricValue = computeMetric(trip, serviceDay.start, metric);
-        const onTime = metricValue === null ? null : Math.abs(metricValue) <= threshold;
 
         const routeKey = `${trip.route_id}:${trip.route_direction}`;
         routes[routeKey] ??= { totalScheduled: 0, evaluatedTrips: 0, onTimeTrips: 0, canceledTrips: 0 };
+
+        const metricValue = computeMetric(trip, serviceDay.start, metric);
+        const onTimeFromMetric = metricValue === null ? null : Math.abs(metricValue) <= threshold;
+        const onTime = isCanceled ? (includeCanceled ? false : null) : onTimeFromMetric;
 
         updateAggregate(overall, onTime, isCanceled);
         updateAggregate(routes[routeKey], onTime, isCanceled);

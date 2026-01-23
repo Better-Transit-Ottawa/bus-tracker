@@ -247,6 +247,21 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
         return { routeId, direction: Number(direction), ...withStats(agg) };
     }).sort((a, b) => parseInt(a.routeId) - parseInt(b.routeId));
 
+    const routesCombined: Record<string, AggregateWithDelays> = {};
+    for (const [key, agg] of Object.entries(routes)) {
+        const [routeId] = key.split(":");
+        routesCombined[routeId] ??= createAggregate();
+        routesCombined[routeId].counts.totalScheduled += agg.counts.totalScheduled;
+        routesCombined[routeId].counts.evaluatedTrips += agg.counts.evaluatedTrips;
+        routesCombined[routeId].counts.onTimeTrips += agg.counts.onTimeTrips;
+        routesCombined[routeId].counts.canceledTrips += agg.counts.canceledTrips;
+        routesCombined[routeId].delays.push(...agg.delays);
+    }
+
+    const routeCombinedList = Object.entries(routesCombined)
+        .map(([routeId, agg]) => ({ routeId, ...withStats(agg) }))
+        .sort((a, b) => parseInt(a.routeId) - parseInt(b.routeId));
+
     const bucketList = Object.entries(buckets).map(([label, agg]) => ({ label, ...withStats(agg) }));
     const routeBucketList = Object.entries(routeBuckets).map(([label, agg]) => ({ label, ...withStats(agg) }));
 
@@ -260,6 +275,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
         overall: withStats(overall),
         routeSummary: routeFilter ? withStats(routeOverall) : null,
         routes: routeList,
+        routesCombined: routeCombinedList,
         timeOfDay: bucketList,
         routeTimeOfDay: routeFilter ? routeBucketList : null
     };

@@ -4,6 +4,7 @@ import sql from "../utils/database.ts";
 
 interface OnTimeQuery {
     date: string;
+    endDate?: string;
     thresholdMinutes?: number;
     includeCanceled?: boolean;
     metric?: "avgObserved" | "start";
@@ -38,6 +39,7 @@ const opts: RouteShorthandOptions = {
             type: "object",
             properties: {
                 date: { type: "string" },
+                endDate: { type: "string" },
                 thresholdMinutes: { type: "number" },
                 includeCanceled: { type: "boolean" },
                 metric: { type: "string", enum: ["avgObserved", "start"] },
@@ -129,49 +131,84 @@ function withStats(agg: AggregateWithDelays) {
     };
 }
 
+function parseDateOnly(dateString: string): Date | null {
+    const parts = dateString.split('-').map(Number);
+    if (parts.length !== 3 || parts.some((p) => Number.isNaN(p))) return null;
+    const [year, month, day] = parts;
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day);
+}
+
 async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, reply: FastifyReply) {
     const threshold = request.query.thresholdMinutes ?? 5;
     const includeCanceled = request.query.includeCanceled ?? false;
     const metric = request.query.metric ?? "avgObserved";
     const routeFilter = request.query.routeId?.trim() || null;
 
-    const [year, month, day] = request.query.date.split('-').map(Number);
-    const dayOnlyDate = new Date(year!, month! - 1, day!);
-    const gtfsVersion = await getGtfsVersion(dayOnlyDate);
-    if (!gtfsVersion) {
-        reply.status(404).send({ error: "No GTFS data available for the requested date" });
+    const startDate = parseDateOnly(request.query.date);
+    if (!startDate) {
+        reply.status(400).send({ error: "Invalid date format. Use YYYY-MM-DD." });
         return;
     }
-    const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
-    if (!serviceIds.length) {
-        reply.status(404).send({ error: "No service IDs for the requested date" });
+    const endDate = request.query.endDate ? parseDateOnly(request.query.endDate) : null;
+    if (request.query.endDate && !endDate) {
+        reply.status(400).send({ error: "Invalid endDate format. Use YYYY-MM-DD." });
         return;
     }
-    const serviceDay = getServiceDayBoundariesWithPadding(dayOnlyDate);
+    if (endDate && endDate < startDate) {
+        reply.status(400).send({ error: "endDate must be on or after date." });
+        return;
+    }
 
-    const trips = await sql<TripRow[]>`
-        WITH service AS (
-            SELECT ${serviceDay.start}::timestamptz AS start_at, ${serviceDay.end}::timestamptz AS end_at
-        ),
-        trip_runs AS (
-            SELECT v.trip_id,
-                   AVG(v.delay_min) FILTER (WHERE v.delay_min IS NOT NULL) AS avg_delay_min,
-                   MIN(v.time) AS first_seen
-            FROM vehicles v, service s
-            WHERE v.time >= s.start_at AND v.time <= s.end_at AND v.trip_id IS NOT NULL
-            GROUP BY v.trip_id
-        ),
-        trip_meta AS (
-            SELECT b.trip_id, b.route_id, b.route_direction, b.start_time
-            FROM blocks b
-            WHERE b.gtfs_version = ${gtfsVersion} AND b.service_id IN ${sql(serviceIds)}
-        )
-        SELECT tm.trip_id, tm.route_id, tm.route_direction, tm.start_time,
-               tr.avg_delay_min, tr.first_seen, c.schedule_relationship
-        FROM trip_meta tm
-        LEFT JOIN trip_runs tr ON tm.trip_id = tr.trip_id
-        LEFT JOIN canceled c ON c.trip_id = tm.trip_id AND c.date = ${dayOnlyDate.toLocaleDateString()}
-    `;
+    const days: Date[] = [];
+    const rangeEnd = endDate ?? startDate;
+    for (let d = new Date(startDate); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+        days.push(new Date(d));
+    }
+
+    const trips: TripRow[] = [];
+    for (const dayOnlyDate of days) {
+        const gtfsVersion = await getGtfsVersion(dayOnlyDate);
+        if (!gtfsVersion) {
+            continue;
+        }
+        const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
+        if (!serviceIds.length) {
+            continue;
+        }
+        const serviceDay = getServiceDayBoundariesWithPadding(dayOnlyDate);
+
+        const dayTrips = await sql<TripRow[]>`
+            WITH service AS (
+                SELECT ${serviceDay.start}::timestamptz AS start_at, ${serviceDay.end}::timestamptz AS end_at
+            ),
+            trip_runs AS (
+                SELECT v.trip_id,
+                       AVG(v.delay_min) FILTER (WHERE v.delay_min IS NOT NULL) AS avg_delay_min,
+                       MIN(v.time) AS first_seen
+                FROM vehicles v, service s
+                WHERE v.time >= s.start_at AND v.time <= s.end_at AND v.trip_id IS NOT NULL
+                GROUP BY v.trip_id
+            ),
+            trip_meta AS (
+                SELECT b.trip_id, b.route_id, b.route_direction, b.start_time
+                FROM blocks b
+                WHERE b.gtfs_version = ${gtfsVersion} AND b.service_id IN ${sql(serviceIds)}
+            )
+            SELECT tm.trip_id, tm.route_id, tm.route_direction, tm.start_time,
+                   tr.avg_delay_min, tr.first_seen, c.schedule_relationship
+            FROM trip_meta tm
+            LEFT JOIN trip_runs tr ON tm.trip_id = tr.trip_id
+            LEFT JOIN canceled c ON c.trip_id = tm.trip_id AND c.date = ${dayOnlyDate.toLocaleDateString()}
+        `;
+
+        trips.push(...dayTrips);
+    }
+
+    if (!trips.length) {
+        reply.status(404).send({ error: "No data available for the requested date range" });
+        return;
+    }
 
     const overall = createAggregate();
     const routes: Record<string, AggregateWithDelays> = {};
@@ -214,7 +251,8 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
     const routeBucketList = Object.entries(routeBuckets).map(([label, agg]) => ({ label, ...withStats(agg) }));
 
     return {
-        date: dayOnlyDate.toISOString().slice(0, 10),
+        date: startDate.toISOString().slice(0, 10),
+        endDate: rangeEnd.toISOString().slice(0, 10),
         metric,
         thresholdMinutes: threshold,
         includeCanceled,

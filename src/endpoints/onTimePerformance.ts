@@ -2,13 +2,21 @@ import type { FastifyInstance, FastifyReply, FastifyRequest, RouteShorthandOptio
 import { dateToTimeString, getDateFromTimestamp, getGtfsVersion, getServiceDayBoundariesWithPadding, getServiceIds, timeStringDiff } from "../utils/schedule.ts";
 import sql from "../utils/database.ts";
 
+// OC Transpo frequent transit network routes (15 min or better during peak)
+const frequentRouteIds = new Set([
+    "5", "6", "7", "10", "11", "12", "14", "25", "40", "41", "44", "45",
+    "57", "61", "62", "63", "68", "74", "75", "80", "85", "87", "88",
+    "90", "98", "111"
+]);
+
 interface OnTimeQuery {
     date: string;
     endDate?: string;
     thresholdMinutes?: number;
     includeCanceled?: boolean;
-    metric?: "avgObserved" | "start";
+    metric?: 'avgObserved' | 'firstObserved';
     routeId?: string;
+    frequencyFilter?: 'frequent' | 'non-frequent';
 }
 
 interface TripRow {
@@ -144,6 +152,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
     const includeCanceled = request.query.includeCanceled ?? false;
     const metric = request.query.metric ?? "avgObserved";
     const routeFilter = request.query.routeId?.trim() || null;
+    const frequencyFilter = request.query.frequencyFilter?.trim() || null;
 
     const startDate = parseDateOnly(request.query.date);
     if (!startDate) {
@@ -177,6 +186,9 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
             continue;
         }
         const serviceDay = getServiceDayBoundariesWithPadding(dayOnlyDate);
+        
+        // Format date as YYYY-MM-DD for PostgreSQL
+        const dateStr = `${dayOnlyDate.getFullYear()}-${String(dayOnlyDate.getMonth() + 1).padStart(2, '0')}-${String(dayOnlyDate.getDate()).padStart(2, '0')}`;
 
         const dayTrips = await sql<TripRow[]>`
             WITH service AS (
@@ -199,7 +211,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
                    tr.avg_delay_min, tr.first_seen, c.schedule_relationship
             FROM trip_meta tm
             LEFT JOIN trip_runs tr ON tm.trip_id = tr.trip_id
-            LEFT JOIN canceled c ON c.trip_id = tm.trip_id AND c.date = ${dayOnlyDate}
+            LEFT JOIN canceled c ON c.trip_id = tm.trip_id AND c.date = ${new Date(dateStr)}
         `;
 
         trips.push(...dayTrips);
@@ -219,6 +231,17 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
     for (const trip of trips) {
         const isCanceled = !!trip.schedule_relationship;
         const matchesRoute = !routeFilter || trip.route_id === routeFilter;
+        
+        // Apply frequency filter
+        const isFrequentRoute = frequentRouteIds.has(trip.route_id);
+        const matchesFrequency = !frequencyFilter || 
+            (frequencyFilter === 'frequent' && isFrequentRoute) ||
+            (frequencyFilter === 'non-frequent' && !isFrequentRoute);
+        
+        // Skip trips that don't match frequency filter
+        if (!matchesFrequency) {
+            continue;
+        }
 
         const routeKey = `${trip.route_id}:${trip.route_direction}`;
         routes[routeKey] ??= createAggregate();
@@ -272,6 +295,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
         thresholdMinutes: threshold,
         includeCanceled,
         routeId: routeFilter,
+        frequencyFilter: frequencyFilter,
         overall: withStats(overall),
         routeSummary: routeFilter ? withStats(routeOverall) : null,
         routes: routeList,

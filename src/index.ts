@@ -28,8 +28,6 @@ const server: FastifyInstance = Fastify({
     }
 });
 
-await server.register(cors, { origin: "*" });
-
 // Initialize cache table
 await ensureCacheTableExists();
 
@@ -62,6 +60,8 @@ createListRoutesEndpoint(server);
 createListCanceledEndpoint(server);
 createOnTimePerformanceEndpoint(server);
 createCacheEndpoints(server);
+
+await server.register(cors, { origin: "*" });
 
 // Nightly pre-warm at 2 AM Eastern, avoiding current service day
 schedule.scheduleJob(

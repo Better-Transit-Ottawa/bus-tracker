@@ -166,6 +166,11 @@ async function getBlockIdForBus(busId: string, gtfsVersion: number, serviceIds: 
                         AND gtfs_version = ${gtfsVersion} 
                         AND service_id IN ${sql(serviceIds)} LIMIT 1)
                     + interval '5 min'
+                AND recorded_timestamp <
+                    (SELECT end_time FROM blocks b
+                        WHERE b.trip_id = v.trip_id 
+                        AND gtfs_version = ${gtfsVersion} 
+                        AND service_id IN ${sql(serviceIds)} LIMIT 1)
                 ORDER BY trip_id, time ASC LIMIT 1`;
     
     if (!trip[0]) return null;
@@ -182,7 +187,7 @@ async function getBlocksForBus(busId: string, gtfsVersion: number, serviceIds: s
         WHERE gtfs_version = ${gtfsVersion} AND service_id IN ${sql(serviceIds)} AND v.id = ${busId}
         AND time > ${serviceDay.start} AND time < ${serviceDay.end}
         AND v.recorded_timestamp > b.start_time + interval '5 min'
-        AND v.recorded_timestamp < b.end_time + interval '15 min'
+        AND v.recorded_timestamp < b.end_time
         ORDER BY start_time ASC`;
     
     return blockData.map((v) => v.block_id);

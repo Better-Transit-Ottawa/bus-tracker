@@ -128,7 +128,7 @@ export function addToTimeString(timeString: string, seconds: number): string {
         second = second % 60;
     }
 
-    if (minute > 60) {
+    if (minute >= 60) {
         hour += Math.floor(minute / 60);
         minute = minute % 60;
     }

@@ -20,7 +20,20 @@ interface Cancellation {
 }
 
 interface ListCanceledQuery {
-    date: string
+    date: string,
+    timePeriod?: TimePeriod;
+}
+
+const TimePeriod = {
+    AllDay: "allday",
+    MorningPeak: "morning",
+    AfternoonPeak: "afternoon"
+} as const;
+type TimePeriod = (typeof TimePeriod)[keyof typeof TimePeriod];
+
+interface TimePeriodTimes {
+    start: string;
+    end: string;
 }
 
 const opts: RouteShorthandOptions = {
@@ -30,15 +43,41 @@ const opts: RouteShorthandOptions = {
         properties: {
             date: {
                 type: "string"
+            },
+            timePeriod: {
+                type: "string",
+                nullable: true
             }
         }
     }
   }
 }
 
+function getTimePeriodTimes(timePeriod: TimePeriod, date: Date): TimePeriodTimes {
+    switch(timePeriod) {
+        case TimePeriod.MorningPeak:
+            return {
+                start: "05:00",
+                end: "09:00",
+            }
+        case TimePeriod.AfternoonPeak:
+            return {
+                start: "15:00",
+                end: "19:00",
+            }
+        default:
+            return {
+                start: "0:00",
+                end: "48:00",
+            }
+    }
+}
+
 async function endpoint(request: FastifyRequest<{Querystring: ListCanceledQuery}>) {
     const date = new Date(request.query.date);
+    const timePeriod = (request.query.timePeriod as TimePeriod) || TimePeriod.AllDay;
     const dayOnlyDate = getDateFromTimestamp(date);
+    const timePeriodTimes = getTimePeriodTimes(timePeriod, dayOnlyDate);
     const gtfsVersion = await getGtfsVersion(dayOnlyDate);
     const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
     const serviceDay = getServiceDayBoundariesWithPadding(dayOnlyDate);
@@ -68,8 +107,14 @@ async function endpoint(request: FastifyRequest<{Querystring: ListCanceledQuery}
                 ORDER BY trip_id, time ASC LIMIT 1) as last_start_time,
         (SELECT count(*) FROM blocks b2
             WHERE gtfs_version = ${gtfsVersion} AND service_id IN ${sql(serviceIds)}
+            AND start_time >= ${timePeriodTimes.start}
+            AND start_time <= ${timePeriodTimes.end}
             AND b2.route_id = b.route_id) as trip_count
-        FROM canceled c INNER JOIN (SELECT * from blocks WHERE gtfs_version = ${gtfsVersion}) b on c.trip_id = b.trip_id
+        FROM canceled c INNER JOIN
+            (SELECT * from blocks 
+                WHERE gtfs_version = ${gtfsVersion}
+                AND start_time >= ${timePeriodTimes.start}
+                AND start_time <= ${timePeriodTimes.end}) b on c.trip_id = b.trip_id
         WHERE c.date = ${dayOnlyDate.toLocaleDateString()} AND schedule_relationship IS NOT NULL`;
 
     const data = canceled.map((v) => ({

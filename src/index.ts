@@ -12,7 +12,9 @@ import { createListRoutesEndpoint } from "./endpoints/listRoutes.ts";
 import schedule from 'node-schedule';
 import fs from 'fs';
 import { createListCanceledEndpoint } from "./endpoints/listCancelations.ts";
+import { createOnTimePerformanceEndpoint } from "./endpoints/onTimePerformance.ts";
 import { createBlockCancelCountEndpoint } from "./endpoints/blockCancelCount.ts";
+import { warmOnTimePerformanceCache } from "./utils/cachePrewarm.ts";
 
 const schedulePath = 'schedule/schedule.zip';
 
@@ -52,14 +54,23 @@ createListVehiclesEndpoint(server);
 createRouteDetailsEndpoint(server);
 createListRoutesEndpoint(server);
 createListCanceledEndpoint(server);
+createOnTimePerformanceEndpoint(server);
 createBlockCancelCountEndpoint(server);
 
-try {
-    await server.register(cors, {
-        origin: "*"
-    });
+await server.register(cors, { origin: "*" });
 
+// Nightly pre-warm at 2 AM Eastern, avoiding current service day
+schedule.scheduleJob(
+    { rule: '0 0 2 * * *', tz: 'America/Toronto' },
+    () => warmOnTimePerformanceCache(server).catch((err) => console.error("Cache pre-warm failed (scheduled)", err))
+);
+
+try {
     await server.listen({ port: config.port ?? 3000, host: config.host ?? "0.0.0.0" })
+    console.log(`Server listening on ${config.host ?? "0.0.0.0"}:${config.port ?? 3000}`);
+    
+    // Pre-warm cache after server is ready (skips if already cached)
+    warmOnTimePerformanceCache(server).catch((err) => console.error("Cache pre-warm failed on startup", err));
 
 } catch (err) {
     console.error(err);

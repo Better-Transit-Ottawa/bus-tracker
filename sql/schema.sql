@@ -84,6 +84,18 @@ CREATE TABLE IF NOT EXISTS calendar_dates (
     PRIMARY KEY (gtfs_version, service_id, date)
 );
 
+CREATE TABLE IF NOT EXISTS cache_on_time_daily (
+    service_date DATE NOT NULL,
+    metric VARCHAR(20) NOT NULL,
+    threshold_minutes INT NOT NULL,
+    include_canceled BOOLEAN NOT NULL,
+    frequency_filter VARCHAR(20) NOT NULL,
+    route_id VARCHAR(20) NOT NULL,
+    data JSONB NOT NULL,
+    cached_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (service_date, metric, threshold_minutes, include_canceled, frequency_filter, route_id)
+);
+
 CREATE INDEX IF NOT EXISTS vehicles_trip_id ON vehicles (trip_id);
 CREATE INDEX IF NOT EXISTS vehicles_time ON vehicles (time);
 CREATE INDEX IF NOT EXISTS vehicles_trip_id_time ON vehicles (trip_id, time);
@@ -104,3 +116,6 @@ CREATE INDEX IF NOT EXISTS stops_arrival_time ON stops (trip_id, arrival_time);
 
 CREATE INDEX IF NOT EXISTS block_data_date_block_bus
 ON block_data (date, block_id, bus_id);
+
+CREATE INDEX IF NOT EXISTS idx_cache_on_time_daily_date
+ON cache_on_time_daily (service_date);

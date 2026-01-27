@@ -15,7 +15,7 @@ interface OnTimeQuery {
     endDate?: string;
     thresholdMinutes?: number;
     includeCanceled?: boolean;
-    metric?: 'avgObserved' | 'firstObserved';
+    metric?: 'avgObserved' | 'start';
     routeId?: string;
     frequencyFilter?: 'frequent' | 'non-frequent';
 }
@@ -303,7 +303,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
     
     // Apply route and frequency filters to build routeOverall
     for (const [key, agg] of Object.entries(merged.routes)) {
-        const routeId = key.split(':')[0];
+        const routeId = key.split(':')[0]!;
         const isFrequent = frequentRouteIds.has(routeId);
         
         const matchesFrequency = !frequencyFilter || 
@@ -323,12 +323,12 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
     const routeList = Object.entries(merged.routes).map(([key, agg]) => {
         const [routeId, direction] = key.split(":");
         return { routeId, direction: Number(direction), ...withStats(agg) };
-    }).sort((a, b) => parseInt(a.routeId) - parseInt(b.routeId));
+    }).sort((a, b) => parseInt(a.routeId!) - parseInt(b.routeId!));
 
     // Combine both directions per route
     const routesCombined: Record<string, AggregateWithDelays> = {};
     for (const [key, agg] of Object.entries(merged.routes)) {
-        const [routeId] = key.split(":");
+        const [routeId] = key.split(":") as [string];
         routesCombined[routeId] ??= createAggregate();
         routesCombined[routeId].counts.totalScheduled += agg.counts.totalScheduled;
         routesCombined[routeId].counts.evaluatedTrips += agg.counts.evaluatedTrips;

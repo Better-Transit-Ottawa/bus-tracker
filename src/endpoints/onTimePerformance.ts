@@ -369,5 +369,5 @@ function withPercent(agg: Aggregate) {
 }
 
 export function createOnTimePerformanceEndpoint(server: FastifyInstance) {
-    server.get<{ Querystring: OnTimeQuery }>("/api/on-time-performance", opts, endpoint);
+    server.get<{ Querystring: OnTimeQuery }>("/api/onTimePerformance", opts, endpoint);
 }

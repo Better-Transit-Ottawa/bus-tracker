@@ -59,9 +59,9 @@ createBlockCancelCountEndpoint(server);
 
 await server.register(cors, { origin: "*" });
 
-// Nightly pre-warm at 2 AM Eastern, avoiding current service day
+// Nightly pre-warm at 4 AM Eastern, avoiding current service day
 schedule.scheduleJob(
-    { rule: '0 0 2 * * *', tz: 'America/Toronto' },
+    { rule: '0 0 4 * * *', tz: 'America/Toronto' },
     () => warmOnTimePerformanceCache(server).catch((err) => console.error("Cache pre-warm failed (scheduled)", err))
 );
 

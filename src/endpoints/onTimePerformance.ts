@@ -301,7 +301,11 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
         mergeAggregateMap(merged.buckets, agg.buckets);
     }
     
-    // Apply route and frequency filters to build routeOverall
+    // Apply route and frequency filters
+    const hasFilters = routeFilter || frequencyFilter;
+    const filteredOverall = createAggregate();
+    const filteredBuckets = Object.fromEntries(timeBuckets.map((b) => [b.label, createAggregate()]));
+    
     for (const [key, agg] of Object.entries(merged.routes)) {
         const routeId = key.split(':')[0]!;
         const isFrequent = frequentRouteIds.has(routeId);
@@ -313,11 +317,71 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
         
         if (matchesFrequency && matchesRoute) {
             mergeAggregate(merged.routeOverall, agg);
+            mergeAggregate(filteredOverall, agg);
         }
     }
     
-    // Route time buckets currently use full bucket data (not per-route filtered)
-    merged.routeBuckets = { ...merged.buckets };
+    // Re-query to get accurate time-of-day buckets with filters applied
+    if (hasFilters && !containsCurrentDay) {
+        // For cached data, we need to re-aggregate from raw trips to get bucket breakdown
+        for (const dayOnlyDate of days) {
+            const gtfsVersion = await getGtfsVersion(dayOnlyDate);
+            if (!gtfsVersion) continue;
+            const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
+            if (!serviceIds.length) continue;
+            const serviceDay = getServiceDayBoundariesWithPadding(dayOnlyDate);
+            const dateStr = `${dayOnlyDate.getFullYear()}-${String(dayOnlyDate.getMonth() + 1).padStart(2, '0')}-${String(dayOnlyDate.getDate()).padStart(2, '0')}`;
+
+            const trips = await sql<TripRow[]>`
+                WITH service AS (
+                    SELECT ${serviceDay.start}::timestamptz AS start_at, ${serviceDay.end}::timestamptz AS end_at
+                ),
+                trip_runs AS (
+                    SELECT v.trip_id,
+                           AVG(v.delay_min) FILTER (WHERE v.delay_min IS NOT NULL) AS avg_delay_min,
+                           MIN(v.time) AS first_seen
+                    FROM vehicles v, service s
+                    WHERE v.time >= s.start_at AND v.time <= s.end_at AND v.trip_id IS NOT NULL
+                    GROUP BY v.trip_id
+                ),
+                trip_meta AS (
+                    SELECT b.trip_id, b.route_id, b.route_direction, b.start_time
+                    FROM blocks b
+                    WHERE b.gtfs_version = ${gtfsVersion} AND b.service_id IN ${sql(serviceIds)}
+                          ${routeFilter ? sql`AND b.route_id = ${routeFilter}` : sql``}
+                )
+                SELECT tm.trip_id, tm.route_id, tm.route_direction, tm.start_time,
+                       tr.avg_delay_min, tr.first_seen, c.schedule_relationship
+                FROM trip_meta tm
+                LEFT JOIN trip_runs tr ON tm.trip_id = tr.trip_id
+                LEFT JOIN canceled c ON c.trip_id = tm.trip_id AND c.date = ${new Date(dateStr)}
+            `;
+
+            for (const trip of trips) {
+                const routeId = trip.route_id;
+                const isFrequent = frequentRouteIds.has(routeId);
+                
+                const matchesFrequency = !frequencyFilter || 
+                    (frequencyFilter === 'frequent' && isFrequent) ||
+                    (frequencyFilter === 'non-frequent' && !isFrequent);
+                
+                if (!matchesFrequency) continue;
+
+                const isCanceled = !!trip.schedule_relationship;
+                const metricValue = computeMetric(trip, metric);
+                const onTimeFromMetric = metricValue === null ? null : Math.abs(metricValue) <= threshold;
+                const onTime = isCanceled ? (includeCanceled ? false : null) : onTimeFromMetric;
+
+                const bucketLabel = bucketForTrip(trip);
+                if (bucketLabel && filteredBuckets[bucketLabel]) {
+                    updateAggregate(filteredBuckets[bucketLabel], onTime, isCanceled, metricValue);
+                }
+            }
+        }
+        merged.routeBuckets = filteredBuckets;
+    } else {
+        merged.routeBuckets = { ...merged.buckets };
+    }
 
     // Build per-route-direction list
     const routeList = Object.entries(merged.routes).map(([key, agg]) => {
@@ -352,11 +416,11 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
         includeCanceled,
         routeId: routeFilter,
         frequencyFilter: frequencyFilter,
-        overall: withStats(merged.overall),
+        overall: hasFilters ? withStats(filteredOverall) : withStats(merged.overall),
         routeSummary: routeFilter ? withStats(merged.routeOverall) : null,
         routes: routeList,
         routesCombined: routeCombinedList,
-        timeOfDay: bucketList,
+        timeOfDay: hasFilters ? routeBucketList : bucketList,
         routeTimeOfDay: routeFilter ? routeBucketList : null
     };
 

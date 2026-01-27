@@ -1,3 +1,4 @@
+import type { JSONValue } from 'postgres';
 import sql from './database.ts';
 import { getDateFromTimestamp, toDateString } from './schedule.ts';
 
@@ -57,7 +58,7 @@ export async function getCachedDailyStats(
             LIMIT 1
         `;
 
-        if (result.length > 0) return result[0].data;
+        if (result.length > 0) return result[0]!.data;
         return null;
     } catch (error) {
         console.error('Error fetching daily cache:', error);
@@ -84,7 +85,7 @@ export async function setCachedDailyStats(
             INSERT INTO cache_on_time_daily
             (service_date, metric, threshold_minutes, include_canceled, frequency_filter, route_id, data, cached_at)
             VALUES
-            (${dateStr}::date, ${metric}, ${thresholdMinutes}, ${includeCanceled}, ${filterStr}, ${idStr}, ${sql.json(data)}, NOW())
+            (${dateStr}::date, ${metric}, ${thresholdMinutes}, ${includeCanceled}, ${filterStr}, ${idStr}, ${sql.json(data as unknown as JSONValue)}, NOW())
             ON CONFLICT (service_date, metric, threshold_minutes, include_canceled, frequency_filter, route_id)
             DO UPDATE SET data = EXCLUDED.data, cached_at = NOW()
         `;

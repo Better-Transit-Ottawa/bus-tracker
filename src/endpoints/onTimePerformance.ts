@@ -212,11 +212,14 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
     const perDayAggregates: CachedAggregates[] = [];
 
     for (const dayOnlyDate of days) {
-        // Try cache first (filters applied later during merge)
-        const existing = await getCachedDailyStats(dayOnlyDate, metric, threshold, includeCanceled, null, null);
-        if (existing) {
-            perDayAggregates.push(existing);
-            continue;
+        const isCurrentDay = isCurrentServiceDay(dayOnlyDate);
+        if (!isCurrentDay) {
+            // Try cache first (filters applied later during merge)
+            const existing = await getCachedDailyStats(dayOnlyDate, metric, threshold, includeCanceled, null, null);
+            if (existing) {
+                perDayAggregates.push(existing);
+                continue;
+            }
         }
 
         const gtfsVersion = await getGtfsVersion(dayOnlyDate);
@@ -282,9 +285,11 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
             }
         }
 
-        // Cache unfiltered base data for future queries
+        // Cache unfiltered base data for future queries (skip current service day)
         const cachedPayload: CachedAggregates = dayAgg;
-        await setCachedDailyStats(dayOnlyDate, metric, threshold, includeCanceled, null, null, cachedPayload);
+        if (!isCurrentDay) {
+            await setCachedDailyStats(dayOnlyDate, metric, threshold, includeCanceled, null, null, cachedPayload);
+        }
         perDayAggregates.push(cachedPayload);
     }
 

@@ -251,6 +251,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
                 SELECT b.trip_id, b.route_id, b.route_direction, b.start_time
                 FROM blocks b
                 WHERE b.gtfs_version = ${gtfsVersion} AND b.service_id IN ${sql(serviceIds)}
+                AND route_id NOT IN ('1-350', '2-354', '4-354')
             )
             SELECT tm.trip_id, tm.route_id, tm.route_direction, tm.start_time,
                    tr.avg_delay_min, tr.first_seen, c.schedule_relationship

@@ -135,3 +135,11 @@ export function addToTimeString(timeString: string, seconds: number): string {
 
     return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`;
 }
+
+export function timeStringToSeconds(timeString: string): number {
+    const hourPart = parseInt(timeString.substring(0, 2));
+    const minutePart = parseInt(timeString.substring(3, 5));
+    const secondPart = parseInt(timeString.substring(6, 8));
+
+    return hourPart * 60 * 60 + minutePart * 60 + secondPart;
+}

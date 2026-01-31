@@ -1,7 +1,7 @@
 import { fetchRealtime } from "./utils/fetchRealtime.ts";
 import { fetchGtfs } from "./utils/fetchGtfs.ts";
 import Fastify, { type FastifyInstance } from "fastify";
-import { createBusCountEndpoint } from "./endpoints/busCount.ts";
+import { createBusCountEndpoint, createBusGraphEndpoint } from "./endpoints/busCount.ts";
 import { createBlockDetailsEndpoint } from "./endpoints/blockDetails.ts";
 import cors from "@fastify/cors";
 import { createListBlocksEndpoint } from "./endpoints/listBlocks.ts";
@@ -48,6 +48,7 @@ schedule.scheduleJob('* * * * *', () =>
 fetchRealtime();
 
 createBusCountEndpoint(server);
+createBusGraphEndpoint(server);
 createBlockDetailsEndpoint(server);
 createListBlocksEndpoint(server);
 createListVehiclesEndpoint(server);

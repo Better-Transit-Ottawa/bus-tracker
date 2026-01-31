@@ -23,6 +23,12 @@ const sql = postgres({
             from: [1082, 1114, 1184],
             serialize: (x: string | Date) => (x instanceof Date ? x : new Date(x)).toISOString(),
             parse: (x: string) => new Date(x + (x.includes('+') ? '' : 'Z'))
+        },
+        numeric: {
+            to: 1700,
+            from: [1700, 20],
+            serialize: (x: unknown) => (typeof x === "number") ? String(x) : x,
+            parse: (x: string) => parseFloat(x)
         }
     }
 });

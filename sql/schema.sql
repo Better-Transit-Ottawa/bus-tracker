@@ -96,6 +96,19 @@ CREATE TABLE IF NOT EXISTS cache_on_time_daily (
     PRIMARY KEY (service_date, metric, threshold_minutes, include_canceled, frequency_filter, route_id)
 );
 
+CREATE TABLE IF NOT EXISTS cache_bus_count (
+    service_date DATE NOT NULL,
+    time INTERVAL NOT NULL,
+    active_buses NUMERIC NOT NULL,
+    buses_on_routes NUMERIC NOT NULL,
+    trips_scheduled NUMERIC NOT NULL,
+    trips_not_running NUMERIC NOT NULL,
+    trips_never_ran NUMERIC NOT NULL,
+    trips_canceled NUMERIC NOT NULL,
+    trips_still_running NUMERIC NOT NULL,
+    PRIMARY KEY (service_date, time)
+);
+
 CREATE INDEX IF NOT EXISTS vehicles_trip_id ON vehicles (trip_id);
 CREATE INDEX IF NOT EXISTS vehicles_time ON vehicles (time);
 CREATE INDEX IF NOT EXISTS vehicles_trip_id_time ON vehicles (trip_id, time);

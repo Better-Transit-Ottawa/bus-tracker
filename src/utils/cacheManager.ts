@@ -29,8 +29,7 @@ export interface CachedAggregates {
 export function isCurrentServiceDay(date: Date): boolean {
     const currentDate = new Date();
     const todayServiceDay = getDateFromTimestamp(currentDate);
-    return toDateString(date) === toDateString(todayServiceDay)
-        && currentDate.getHours() > 4;
+    return toDateString(date) === toDateString(todayServiceDay);
 }
 
 // Retrieve cached stats for a specific service day and configuration

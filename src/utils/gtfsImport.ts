@@ -150,7 +150,7 @@ export async function importGtfs(filePath: string, date: Date): Promise<void> {
             const timepoint = columns[8] ? parseInt(columns[8]!) : null;
 
             // Don't run out of memory
-            if (promises.length >= 1000000) {
+            if (promises.length >= 200000) {
                 await Promise.all(promises);
                 promises.length = 0;
             }

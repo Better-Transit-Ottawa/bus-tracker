@@ -50,6 +50,33 @@ CREATE TABLE IF NOT EXISTS stops (
     PRIMARY KEY (gtfs_version, trip_id, stop_id, stop_sequence)
 );
 
+CREATE TABLE IF NOT EXISTS stop_info (
+    gtfs_version NUMERIC,
+    stop_id TEXT,
+    stop_code TEXT,
+    stop_name TEXT,
+    stop_desc TEXT,
+    stop_lat DOUBLE PRECISION,
+    stop_lon DOUBLE PRECISION,
+    zone_id TEXT,
+    stop_url TEXT,
+    location_type INT,
+    parent_station TEXT,
+    stop_timezone TEXT,
+    wheelchair_boarding INT,
+    PRIMARY KEY (gtfs_version, stop_id)
+);
+
+CREATE TABLE IF NOT EXISTS shapes (
+    gtfs_version NUMERIC,
+    shape_id TEXT,
+    shape_pt_lat DOUBLE PRECISION,
+    shape_pt_lon DOUBLE PRECISION,
+    shape_pt_sequence INT,
+    shape_dist_traveled DOUBLE PRECISION,
+    PRIMARY KEY (gtfs_version, shape_id, shape_pt_sequence)
+);
+
 CREATE TABLE IF NOT EXISTS block_data (
     date DATE,
     trip_id TEXT,

@@ -187,4 +187,88 @@ export async function importGtfs(filePath: string, date: Date): Promise<void> {
 
         stopTimes.close();
     }
+
+    {
+        const stopsData = readline.createInterface({
+            input: fs.createReadStream(path.join(filePath, "stops.txt")),
+            crlfDelay: Infinity
+        });
+
+        const promises = [];
+
+        let first = true;
+        for await (const line of stopsData) {
+            if (first) {
+                first = false;
+                continue; // skip header
+            }
+
+            const columns = line.split(',');
+            const stopId = columns[0]!;
+            const stopCode = columns[1] || null;
+            const stopName = columns[2]!;
+            // columns[3] is tts_stop_name (skipped always empty)
+            const stopDesc = columns[4] || null;
+            const stopLat = columns[5] ? parseFloat(columns[5]!) : null;
+            const stopLon = columns[6] ? parseFloat(columns[6]!) : null;
+            const zoneId = columns[7] || null;
+            const stopUrl = columns[8] || null;
+            const locationType = columns[9] ? parseInt(columns[9]!) : null;
+            const parentStation = columns[10] || null;
+            const stopTimezone = columns[11] || null;
+            const wheelchairBoarding = columns[12] ? parseInt(columns[12]!) : null;
+
+            // Don't run out of memory
+            if (promises.length >= 100000) {
+                await Promise.all(promises);
+                promises.length = 0;
+            }
+
+            promises.push(sql`
+                INSERT INTO stop_info (gtfs_version, stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, zone_id, stop_url, location_type, parent_station, stop_timezone, wheelchair_boarding)
+                VALUES (${gtfsVersion}, ${stopId}, ${stopCode}, ${stopName}, ${stopDesc}, ${stopLat}, ${stopLon}, ${zoneId}, ${stopUrl}, ${locationType}, ${parentStation}, ${stopTimezone}, ${wheelchairBoarding})
+            `);
+        }
+
+        await Promise.all(promises);
+        stopsData.close();
+    }
+
+    {
+        const shapesData = readline.createInterface({
+            input: fs.createReadStream(path.join(filePath, "shapes.txt")),
+            crlfDelay: Infinity
+        });
+
+        const promises = [];
+
+        let first = true;
+        for await (const line of shapesData) {
+            if (first) {
+                first = false;
+                continue; // skip header
+            }
+
+            const columns = line.split(',');
+            const shapeId = columns[0]!;
+            const shapePtLat = columns[1] ? parseFloat(columns[1]!) : null;
+            const shapePtLon = columns[2] ? parseFloat(columns[2]!) : null;
+            const shapePtSequence = columns[3] ? parseInt(columns[3]!) : null;
+            const shapeDistTraveled = columns[4] ? parseFloat(columns[4]!) : null;
+
+            // Don't run out of memory
+            if (promises.length >= 1000000) {
+                await Promise.all(promises);
+                promises.length = 0;
+            }
+
+            promises.push(sql`
+                INSERT INTO shapes (gtfs_version, shape_id, shape_pt_lat, shape_pt_lon, shape_pt_sequence, shape_dist_traveled)
+                VALUES (${gtfsVersion}, ${shapeId}, ${shapePtLat}, ${shapePtLon}, ${shapePtSequence}, ${shapeDistTraveled})
+            `);
+        }
+
+        await Promise.all(promises);
+        shapesData.close();
+    }
 }

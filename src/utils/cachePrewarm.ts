@@ -9,11 +9,10 @@ function formatDate(date: Date): string {
     return `${year}-${month}-${day}`;
 }
 
-// Get all distinct service days from vehicle tracking data
-// Service day cutoff is 3 AM, so shift time back by 3 hours before truncating to date
+// Get all distinct dates from vehicle tracking data
 async function getAllServiceDays(): Promise<Date[]> {
     const result = await sql<{ date: string }[]>`
-        SELECT DISTINCT DATE(time - INTERVAL '3 hours') as date
+        SELECT DISTINCT DATE(time) as date
         FROM vehicles
         ORDER BY date
     `;

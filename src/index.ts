@@ -72,7 +72,7 @@ try {
     console.log(`Server listening on ${config.host ?? "0.0.0.0"}:${config.port ?? 3000}`);
     
     // Delete old cache entries before pre-warming
-    await deleteOldCacheEntries(config.cacheMaxAgeDays || 30);
+    await deleteOldCacheEntries(config.cacheMaxAgeDays || 90);
     // Pre-warm cache after server is ready (skips if already cached)
     warmOnTimePerformanceCache(server).catch((err) => console.error("Cache pre-warm failed on startup", err));
 

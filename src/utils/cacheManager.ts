@@ -14,10 +14,13 @@ export async function deleteCacheForDate(serviceDate: Date): Promise<void> {
 // Delete cache entries older than a specified number of days
 export async function deleteOldCacheEntries(maxAgeDays: number): Promise<void> {
     try {
-        await sql`
-            DELETE FROM cache_on_time_daily
-            WHERE service_date < (CURRENT_DATE - INTERVAL '${maxAgeDays} days')
-        `;
+        const before = await sql`SELECT service_date FROM cache_on_time_daily ORDER BY service_date ASC`;
+            const cutoffDate = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
+            await sql`
+                DELETE FROM cache_on_time_daily
+                WHERE service_date < ${cutoffDate}::date
+            `;
+        const after = await sql`SELECT service_date FROM cache_on_time_daily ORDER BY service_date ASC`;
         console.log(`Deleted cache entries older than ${maxAgeDays} days.`);
     } catch (error) {
         console.error('Error deleting old cache entries:', error);

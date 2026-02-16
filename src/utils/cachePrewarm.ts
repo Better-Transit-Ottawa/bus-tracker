@@ -34,7 +34,7 @@ export async function warmOnTimePerformanceCache(server: FastifyInstance): Promi
     const frequencyFilter = null;
     const routeId = null;
 
-    const maxAgeDays = config.cacheMaxAgeDays || 30; // fallback to 30 if not set
+    const maxAgeDays = config.cacheMaxAgeDays || 90; // fallback to 90 if not set
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
 

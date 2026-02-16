@@ -15,6 +15,7 @@ import { createListCanceledEndpoint } from "./endpoints/listCancelations.ts";
 import { createOnTimePerformanceEndpoint } from "./endpoints/onTimePerformance.ts";
 import { createBlockCancelCountEndpoint } from "./endpoints/blockCancelCount.ts";
 import { warmOnTimePerformanceCache } from "./utils/cachePrewarm.ts";
+import { deleteOldCacheEntries } from "./utils/cacheManager.ts";
 
 const schedulePath = 'schedule/schedule.zip';
 
@@ -70,6 +71,8 @@ try {
     await server.listen({ port: config.port ?? 3000, host: config.host ?? "0.0.0.0" })
     console.log(`Server listening on ${config.host ?? "0.0.0.0"}:${config.port ?? 3000}`);
     
+    // Delete old cache entries before pre-warming
+    await deleteOldCacheEntries(config.cacheMaxAgeDays || 30);
     // Pre-warm cache after server is ready (skips if already cached)
     warmOnTimePerformanceCache(server).catch((err) => console.error("Cache pre-warm failed on startup", err));
 

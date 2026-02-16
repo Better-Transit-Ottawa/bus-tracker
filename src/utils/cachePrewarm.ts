@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { getCachedDailyStats, isCurrentServiceDay } from "./cacheManager.ts";
+import { config } from "./config.ts";
 import sql from "./database.ts";
 
 function formatDate(date: Date): string {
@@ -27,22 +28,30 @@ async function getAllServiceDays(): Promise<Date[]> {
 // Pre-populate cache for all historical service days (skips current day)
 export async function warmOnTimePerformanceCache(server: FastifyInstance): Promise<void> {
     const days = await getAllServiceDays();
-    // Use default query parameters for base cache
     const metric = "avgObserved" as const;
     const threshold = 5;
     const includeCanceled = false;
     const frequencyFilter = null;
     const routeId = null;
 
-    console.log(`Cache pre-warm: checking ${days.length} days from schedule...`);
-    
+    const maxAgeDays = config.cacheMaxAgeDays || 30; // fallback to 30 if not set
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
+
+    console.log(`Cache pre-warm: checking ${days.length} days from schedule (max age: ${maxAgeDays} days)...`);
+
     let warmed = 0;
     let skipped = 0;
     let alreadyCached = 0;
-    
+
     for (const day of days) {
         // Skip today (data still changing)
         if (isCurrentServiceDay(day)) {
+            skipped++;
+            continue;
+        }
+        // Skip days older than max age
+        if (day < cutoffDate) {
             skipped++;
             continue;
         }
@@ -65,6 +74,6 @@ export async function warmOnTimePerformanceCache(server: FastifyInstance): Promi
             }
         }
     }
-    
+
     console.log(`Cache pre-warm: finished. Warmed: ${warmed}, Already cached: ${alreadyCached}, Skipped: ${skipped}`);
 }

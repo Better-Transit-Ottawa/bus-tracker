@@ -1,3 +1,15 @@
+// Delete cache entries older than a specified number of days
+export async function deleteOldCacheEntries(maxAgeDays: number): Promise<void> {
+    try {
+        await sql`
+            DELETE FROM cache_on_time_daily
+            WHERE service_date < (CURRENT_DATE - INTERVAL '${maxAgeDays} days')
+        `;
+        console.log(`Deleted cache entries older than ${maxAgeDays} days.`);
+    } catch (error) {
+        console.error('Error deleting old cache entries:', error);
+    }
+}
 import type { JSONValue } from 'postgres';
 import sql from './database.ts';
 import { getDateFromTimestamp, toDateString } from './schedule.ts';

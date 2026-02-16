@@ -1,3 +1,16 @@
+// Delete cache entries for a specific service day
+export async function deleteCacheForDate(serviceDate: Date): Promise<void> {
+    const dateStr = toDateString(serviceDate);
+    try {
+        await sql`
+            DELETE FROM cache_on_time_daily
+            WHERE service_date = ${dateStr}::date
+        `;
+        console.log(`Deleted cache entries for ${dateStr}.`);
+    } catch (error) {
+        console.error('Error deleting cache for date:', error);
+    }
+}
 // Delete cache entries older than a specified number of days
 export async function deleteOldCacheEntries(maxAgeDays: number): Promise<void> {
     try {

@@ -1,31 +1,3 @@
-// Delete cache entries for a specific service day
-export async function deleteCacheForDate(serviceDate: Date): Promise<void> {
-    const dateStr = toDateString(serviceDate);
-    try {
-        await sql`
-            DELETE FROM cache_on_time_daily
-            WHERE service_date = ${dateStr}::date
-        `;
-        console.log(`Deleted cache entries for ${dateStr}.`);
-    } catch (error) {
-        console.error('Error deleting cache for date:', error);
-    }
-}
-// Delete cache entries older than a specified number of days
-export async function deleteOldCacheEntries(maxAgeDays: number): Promise<void> {
-    try {
-        const before = await sql`SELECT service_date FROM cache_on_time_daily ORDER BY service_date ASC`;
-            const cutoffDate = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
-            await sql`
-                DELETE FROM cache_on_time_daily
-                WHERE service_date < ${cutoffDate}::date
-            `;
-        const after = await sql`SELECT service_date FROM cache_on_time_daily ORDER BY service_date ASC`;
-        console.log(`Deleted cache entries older than ${maxAgeDays} days.`);
-    } catch (error) {
-        console.error('Error deleting old cache entries:', error);
-    }
-}
 import type { JSONValue } from 'postgres';
 import sql from './database.ts';
 import { getDateFromTimestamp, toDateString } from './schedule.ts';
@@ -174,5 +146,33 @@ export async function getCacheStats(): Promise<{
     } catch (error) {
         console.error('Error getting cache stats:', error);
         throw error;
+    }
+}
+// Delete cache entries for a specific service day
+export async function deleteCacheForDate(serviceDate: Date): Promise<void> {
+    const dateStr = toDateString(serviceDate);
+    try {
+        await sql`
+            DELETE FROM cache_on_time_daily
+            WHERE service_date = ${dateStr}::date
+        `;
+        console.log(`Deleted cache entries for ${dateStr}.`);
+    } catch (error) {
+        console.error('Error deleting cache for date:', error);
+    }
+}
+// Delete cache entries older than a specified number of days
+export async function deleteOldCacheEntries(maxAgeDays: number): Promise<void> {
+    try {
+        const before = await sql`SELECT service_date FROM cache_on_time_daily ORDER BY service_date ASC`;
+            const cutoffDate = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
+            await sql`
+                DELETE FROM cache_on_time_daily
+                WHERE service_date < ${cutoffDate}::date
+            `;
+        const after = await sql`SELECT service_date FROM cache_on_time_daily ORDER BY service_date ASC`;
+        console.log(`Deleted cache entries older than ${maxAgeDays} days.`);
+    } catch (error) {
+        console.error('Error deleting old cache entries:', error);
     }
 }

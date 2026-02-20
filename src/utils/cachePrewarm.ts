@@ -35,6 +35,8 @@ export async function warmOnTimePerformanceCache(server: FastifyInstance): Promi
     const routeId = null;
 
     const maxAgeDays = config.cacheMaxAgeDays || 90; // fallback to 90 if not set
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
 
@@ -47,6 +49,11 @@ export async function warmOnTimePerformanceCache(server: FastifyInstance): Promi
     for (const day of days) {
         // Skip today (data still changing)
         if (isCurrentServiceDay(day)) {
+            skipped++;
+            continue;
+        }
+        // Skip yesterday (fixes cache issue)
+        if (day.getTime() === yesterday.getTime()) {
             skipped++;
             continue;
         }

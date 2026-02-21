@@ -18,6 +18,7 @@ interface OnTimeQuery {
     metric?: 'avgObserved' | 'start';
     routeId?: string;
     frequencyFilter?: 'frequent' | 'non-frequent';
+    excludeSchoolRoutes?: boolean;
 }
 
 interface TripRow {
@@ -53,6 +54,8 @@ const opts: RouteShorthandOptions = {
                 includeCanceled: { type: "boolean" },
                 metric: { type: "string", enum: ["avgObserved", "start"] },
                 routeId: { type: "string" }
+                     ,
+                excludeSchoolRoutes: { type: ["boolean", "string"] }
             },
             required: ["date"]
         }
@@ -184,6 +187,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
     const metric = request.query.metric ?? "avgObserved";
     const routeFilter = request.query.routeId?.trim() || null;
     const frequencyFilter = request.query.frequencyFilter?.trim() || null;
+    const excludeSchool = !!request.query.excludeSchoolRoutes;
 
     const startDate = parseDateOnly(request.query.date);
     if (!startDate) {
@@ -213,8 +217,10 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
 
     for (const dayOnlyDate of days) {
         const isCurrentDay = isCurrentServiceDay(dayOnlyDate);
-        if (!isCurrentDay) {
-            // Try cache first (filters applied later during merge)
+        if (!isCurrentDay && !excludeSchool) {
+            // Try cache first (filters applied later during merge).
+            // When we're excluding school routes we cannot rely on the
+            // unfiltered cache, so always recalc.
             const existing = await getCachedDailyStats(dayOnlyDate, metric, threshold, includeCanceled, null, null);
             if (existing) {
                 perDayAggregates.push(existing);
@@ -260,14 +266,22 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
             LEFT JOIN canceled c ON c.trip_id = tm.trip_id AND c.date = ${new Date(dateStr)}
         `;
 
-        if (!trips.length) {
+        // optionally filter out school routes (600-range)
+        let filteredTrips = trips;
+        if (excludeSchool) {
+            filteredTrips = trips.filter((trip) => {
+                const num = parseInt(trip.route_id, 10);
+                return Number.isNaN(num) || num < 600 || num >= 700;
+            });
+        }
+        if (!filteredTrips.length) {
             continue;
         }
 
         const dayAgg = emptyAggregateBundle();
 
         // Aggregate each trip into overall, per-route, and time-of-day buckets
-        for (const trip of trips) {
+        for (const trip of filteredTrips) {
             const isCanceled = !!trip.schedule_relationship;
 
             const routeKey = `${trip.route_id}:${trip.route_direction}`;
@@ -288,7 +302,9 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
 
         // Cache unfiltered base data for future queries (skip current service day)
         const cachedPayload: CachedAggregates = dayAgg;
-        if (!isCurrentDay) {
+        // only cache if we're not excluding school routes (otherwise the cache
+        // would contain data that still includes them)
+        if (!isCurrentDay && !excludeSchool) {
             await setCachedDailyStats(dayOnlyDate, metric, threshold, includeCanceled, null, null, cachedPayload);
         }
         perDayAggregates.push(cachedPayload);

@@ -4,6 +4,7 @@ import sql from "../utils/database.ts";
 
 interface ListRoutessQuery {
     date: string
+    excludeSchoolRoutes?: boolean
 }
 
 const opts: RouteShorthandOptions = {
@@ -13,6 +14,10 @@ const opts: RouteShorthandOptions = {
         properties: {
             date: {
                 type: "string"
+            }
+            ,
+            excludeSchoolRoutes: {
+                type: ["boolean", "string"]
             }
         }
     },
@@ -53,14 +58,25 @@ async function endpoint(request: FastifyRequest<{Querystring: ListRoutessQuery}>
         GROUP BY route_id
         ORDER BY route_id`;
 
-    return blocks.map((b) => {
-        const frequency = frequentRouteIds.has(b.route_id) ? "frequent" : "non-frequent";
-        return {
-            routeId: b.route_id,
-            tripCount: b.trip_count,
-            frequency
-        };
-    });
+    const excludeSchool = !!request.query.excludeSchoolRoutes;
+
+    return blocks
+        .map((b) => {
+            // optionally drop routes in the 600s (school routes)
+            if (excludeSchool) {
+                const num = parseInt(b.route_id, 10);
+                if (!Number.isNaN(num) && num >= 600 && num < 700) {
+                    return null;
+                }
+            }
+            const frequency = frequentRouteIds.has(b.route_id) ? "frequent" : "non-frequent";
+            return {
+                routeId: b.route_id,
+                tripCount: b.trip_count,
+                frequency
+            };
+        })
+        .filter((x): x is {routeId: string; tripCount: number; frequency: string} => x !== null);
 }
 
 export function createListRoutesEndpoint(server: FastifyInstance) {

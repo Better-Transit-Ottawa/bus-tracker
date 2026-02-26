@@ -59,6 +59,8 @@ async function getBusCounts(date: Date): Promise<BusCountData> {
     const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
     const beforeDate = new Date(date.getTime() - 1000 * 60 * 2);
     const afterDate = new Date(date.getTime() + 1000 * 60 * 2);
+    const beforeTime = dateToTimeString(beforeDate, true);
+    const afterTime = dateToTimeString(afterDate, true);
 
     // todo: subtract buses in garage and include deadheads
     const activeBuses = sql`SELECT count(distinct id) as c FROM vehicles v
@@ -109,7 +111,8 @@ async function getBusCounts(date: Date): Promise<BusCountData> {
             AND end_time < ${timeString}
             AND route_id NOT IN ('1-350', '2-354', '4-354')
             AND trip_id IN (SELECT trip_id FROM vehicles v
-                                WHERE v.time > ${beforeDate} AND v.time < ${afterDate}
+                                WHERE v.time > ${serviceDay.start} AND v.time < ${serviceDay.end}
+                                AND recorded_timestamp > ${beforeTime} AND recorded_timestamp < ${afterTime}
                                 AND next_stop_id IS NOT NULL AND v.trip_id = b.trip_id LIMIT 1)`;
 
     const result = {

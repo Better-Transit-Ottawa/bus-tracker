@@ -18,6 +18,7 @@ import { warmOnTimePerformanceCache } from "./utils/cachePrewarm.ts";
 import { deleteOldCacheEntries } from "./utils/cacheManager.ts";
 import { createHistoricalCountEndpoint } from "./endpoints/historicalCounts.ts";
 import { createServiceIdsEndpoint } from "./endpoints/serviceId.ts";
+import { createLocationExportEndpoint } from "./endpoints/locationExport.ts";
 
 const schedulePath = 'schedule/schedule.zip';
 
@@ -62,6 +63,7 @@ createOnTimePerformanceEndpoint(server);
 createBlockCancelCountEndpoint(server);
 createServiceIdsEndpoint(server);
 createHistoricalCountEndpoint(server);
+createLocationExportEndpoint(server);
 
 await server.register(cors, { origin: "*" });
 

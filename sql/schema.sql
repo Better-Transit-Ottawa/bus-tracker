@@ -109,6 +109,16 @@ CREATE TABLE IF NOT EXISTS cache_bus_count (
     PRIMARY KEY (service_date, time)
 );
 
+CREATE TABLE IF NOT EXISTS cache_historical_count (
+    service_date DATE NOT NULL,
+    cancelations NUMERIC NOT NULL,
+    missing_trips NUMERIC NOT NULL,
+    delayed_trips NUMERIC NOT NULL,
+    bus_types JSONB NOT NULL,
+    bus_hours JSONB NOT NULL,
+    PRIMARY KEY (service_date)
+);
+
 CREATE INDEX IF NOT EXISTS vehicles_trip_id ON vehicles (trip_id);
 CREATE INDEX IF NOT EXISTS vehicles_time ON vehicles (time);
 CREATE INDEX IF NOT EXISTS vehicles_trip_id_time ON vehicles (trip_id, time);

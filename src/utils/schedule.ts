@@ -143,3 +143,12 @@ export function timeStringToSeconds(timeString: string): number {
 
     return hourPart * 60 * 60 + minutePart * 60 + secondPart;
 }
+
+export function longTimeStringToSeconds(timeString: string): number {
+    const parts = timeString.split(":");
+    const hourPart = parseInt(parts[0]!);
+    const minutePart = parseInt(parts[1]!);
+    const secondPart = parseInt(parts[2]!);
+
+    return hourPart * 60 * 60 + minutePart * 60 + secondPart;
+}

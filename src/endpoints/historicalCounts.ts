@@ -164,7 +164,7 @@ loop2:
         date: toDateString(dayOnlyDate),
         cancelations: (await cancelations)[0]?.c,
         busTypes: await busesOnRoutes,
-        missingTrips: (await missingTrips)[0]?.c - (await addedTrips)[0]?.c,
+        missingTrips: Math.max((await missingTrips)[0]?.c - (await addedTrips)[0]?.c, 0),
         delayedTrips: 0
     };
 

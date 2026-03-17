@@ -10,8 +10,6 @@ const opts: RouteShorthandOptions = {
     querystring: {
         type: "object",
         properties: {
-            routeId: {
-            },
             date: {
                 type: "string"
             }
@@ -21,7 +19,7 @@ const opts: RouteShorthandOptions = {
 }
 async function endpoint(request: FastifyRequest<{Querystring: ServiceIdQuery}>, reply: FastifyReply) {
     const date = new Date(request.query.date);
-    const dayOnlyDate = getDateFromTimestamp(date);
+    const dayOnlyDate = getDateFromTimestamp(date, false);
     const gtfsVersion = await getGtfsVersion(dayOnlyDate);
     const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);
 

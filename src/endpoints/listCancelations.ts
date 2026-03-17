@@ -76,7 +76,7 @@ function getTimePeriodTimes(timePeriod: TimePeriod, date: Date): TimePeriodTimes
 async function endpoint(request: FastifyRequest<{Querystring: ListCanceledQuery}>) {
     const date = new Date(request.query.date);
     const timePeriod = (request.query.timePeriod as TimePeriod) || TimePeriod.AllDay;
-    const dayOnlyDate = getDateFromTimestamp(date);
+    const dayOnlyDate = getDateFromTimestamp(date, false);
     const timePeriodTimes = getTimePeriodTimes(timePeriod, dayOnlyDate);
     const gtfsVersion = await getGtfsVersion(dayOnlyDate);
     const serviceIds = await getServiceIds(gtfsVersion, dayOnlyDate);

@@ -68,11 +68,11 @@ export function toDateString(date: Date): string {
     return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export function getDateFromTimestamp(time: Date): Date {
+export function getDateFromTimestamp(time: Date, roundToPreviousDay = true): Date {
     const year = time.getFullYear();
     const month = time.getMonth();
     let day = time.getDate();
-    if (time.getHours() < 3) {
+    if (roundToPreviousDay && time.getHours() < 3) {
         day--;
     }
 

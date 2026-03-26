@@ -41,7 +41,7 @@ async function endpoint(request: FastifyRequest<{Querystring: LocationExportQuer
         throw new Error("Invalid date");
     }
 
-    return await sql`COPY (SELECT time, id, trip_id, delay_min, latitude, longitude speed, recorded_timestamp, next_stop_id 
+    return await sql`COPY (SELECT time, id, trip_id, TRUNC(delay_min::NUMERIC, 3), TRUNC(latitude::NUMERIC, 7), TRUNC(longitude::NUMERIC, 7), TRUNC(speed::NUMERIC, 3), recorded_timestamp, next_stop_id 
             FROM vehicles WHERE time > '${sql.unsafe(start)}' AND time < '${sql.unsafe(end)}' ORDER BY time ASC)
         TO stdout WITH (FORMAT CSV, HEADER)`.readable();
 }

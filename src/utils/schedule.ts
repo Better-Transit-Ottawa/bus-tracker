@@ -88,7 +88,7 @@ export function getServiceDayBoundariesWithPadding(date: Date): ServiceDay {
 }
 
 export async function getGtfsVersion(date: Date): Promise<number> {
-    const result = await sql`SELECT version FROM gtfs_versions WHERE import_date <= ${date} ORDER BY import_date DESC LIMIT 1`;
+    const result = await sql`SELECT version FROM gtfs_versions WHERE import_date <= ${toDateString(date)} ORDER BY import_date DESC LIMIT 1`;
 
     return result[0]?.version;
 }

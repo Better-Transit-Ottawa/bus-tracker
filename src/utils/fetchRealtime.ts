@@ -122,7 +122,7 @@ export async function fetchRealtime(): Promise<void> {
     await Promise.all(promises);
 }
 
-async function getDelayInfo(tripFeed: GtfsRealtimeBindings.transit_realtime.FeedMessage, date: Date, recievedTripId: string, tripId: string): Promise<{delay: number, nextStopId: string} | null> {
+async function getDelayInfo(tripFeed: GtfsRealtimeBindings.transit_realtime.FeedMessage, date: Date, recievedTripId: string, tripId: string): Promise<{delay: number | null, nextStopId: string} | null> {
     for (const entity of tripFeed.entity) {
         if (entity.tripUpdate && entity.tripUpdate.trip && entity.tripUpdate.trip.tripId
                 && entity.tripUpdate.stopTimeUpdate && entity.tripUpdate.trip.tripId === recievedTripId) {
@@ -145,7 +145,10 @@ async function getDelayInfo(tripFeed: GtfsRealtimeBindings.transit_realtime.Feed
                     nextStopId: stopId
                 }
             } else {
-                return null;
+                return {
+                    delay: null,
+                    nextStopId: stopId
+                };
             }
         }
     }

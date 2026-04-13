@@ -152,3 +152,16 @@ export function longTimeStringToSeconds(timeString: string): number {
 
     return hourPart * 60 * 60 + minutePart * 60 + secondPart;
 }
+
+export function isBadDataDate(date: Date): boolean {
+    return [
+        "2026-01-25",
+        "2026-02-03",
+        "2026-02-21",
+        "2026-02-26",
+        "2026-04-04",
+        "2026-04-10",
+        "2026-04-11",
+        "2026-04-12",
+    ].includes(toDateString(date));
+}

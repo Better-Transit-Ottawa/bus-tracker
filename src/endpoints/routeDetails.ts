@@ -54,7 +54,7 @@ async function endpoint(request: FastifyRequest<{Querystring: RouteDetailsQuery}
 }
 
 async function getRouteData(routeId: string, gtfsVersion: number, serviceIds: string[], serviceDay: ServiceDay, date: Date): Promise<TripDetails[]> {
-    const blockData = await sql`SELECT block_id, b.trip_id, trip_headsign, route_direction, start_time, end_time,
+    const blockData = await sql`SELECT block_id, b.trip_id, trip_headsign, route_direction, shape_id, start_time, end_time,
             id as bus_id, actual_start_time, actual_end_time, delay_min,
             (SELECT schedule_relationship FROM canceled c WHERE date = ${date.toLocaleDateString()} AND trip_id = b.trip_id),
             (SELECT next_stop_id FROM vehicles v WHERE time > ${serviceDay.start}
@@ -100,6 +100,7 @@ async function getRouteData(routeId: string, gtfsVersion: number, serviceIds: st
             tripId: v.trip_id as string,
             headSign: v.trip_headsign as string,
             routeDirection: v.route_direction as number,
+            shapeId: v.shape_id as string,
             scheduledStartTime: v.start_time as string,
             scheduledEndTime: v.end_time as string,
             actualStartTime: v.actual_start_time ? v.actual_start_time : null,

@@ -27,6 +27,4 @@ services:
       - database.env
     volumes:
       - ./backup:/backup
-    ports:
-      - 5433:5432
     restart: always

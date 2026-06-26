@@ -1,0 +1,1 @@
+PGPASSWORD=$POSTGRES_PASSWORD pg_dump -p 5432 -h database -U postgres -f /backup/gtfs.dump gtfs

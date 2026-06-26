@@ -20,3 +20,13 @@ services:
     ports:
       - 5433:5432
     restart: always
+  backup-db:
+    container_name: gtfs_database_backup
+    image: ghcr.io/better-transit-ottawa/bus-tracker-backup:latest
+    env_file: 
+      - database.env
+    volumes:
+      - ./backup:/backup
+    ports:
+      - 5433:5432
+    restart: always

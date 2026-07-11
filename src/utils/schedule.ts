@@ -171,5 +171,5 @@ export function isBadDataDate(date: Date): boolean {
 
 export function isFutureDate(date: Date): boolean {
     const currentDate = new Date();
-    return getDateFromTimestamp(date).getTime() > getDateFromTimestamp(currentDate).getTime();
+    return date.getTime() > getDateFromTimestamp(currentDate).getTime();
 }

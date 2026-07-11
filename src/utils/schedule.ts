@@ -168,3 +168,8 @@ export function isBadDataDate(date: Date): boolean {
         "2026-06-20",
     ].includes(toDateString(date));
 }
+
+export function isFutureDate(date: Date): boolean {
+    const currentDate = new Date();
+    return getDateFromTimestamp(date).getTime() > getDateFromTimestamp(currentDate).getTime();
+}

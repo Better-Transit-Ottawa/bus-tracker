@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, RouteShorthandOptions } from "fastify";
-import { dateToTimeString, getDateFromTimestamp, getGtfsVersion, getServiceDayBoundariesWithPadding, getServiceIds, isBadDataDate, timeStringDiff } from "../utils/schedule.ts";
+import { dateToTimeString, getGtfsVersion, getServiceDayBoundariesWithPadding, getServiceIds, isBadDataDate, isFutureDate, timeStringDiff } from "../utils/schedule.ts";
 import sql from "../utils/database.ts";
 import { isCurrentServiceDay, getCachedDailyStats, setCachedDailyStats, type CachedAggregates, type AggregateWithDelays as CachedAggregateWithDelays } from "../utils/cacheManager.ts";
 
@@ -217,7 +217,7 @@ async function endpoint(request: FastifyRequest<{ Querystring: OnTimeQuery }>, r
 
     for (const dayOnlyDate of days) {
         const isCurrentDay = isCurrentServiceDay(dayOnlyDate);
-        if (isBadDataDate(dayOnlyDate)) {
+        if (isBadDataDate(dayOnlyDate) || isFutureDate(dayOnlyDate)) {
             continue;
         }
 

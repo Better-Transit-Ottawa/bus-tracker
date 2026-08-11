@@ -166,6 +166,8 @@ export function isBadDataDate(date: Date): boolean {
         "2026-05-14",
         "2026-06-19",
         "2026-06-20",
+        "2026-08-10",
+        "2026-08-11"
     ].includes(toDateString(date));
 }
 

@@ -25,6 +25,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^24.10.1",
     "@types/node-schedule": "^2.1.8"
   }

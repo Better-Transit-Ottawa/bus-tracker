@@ -19,6 +19,7 @@ import { deleteOldCacheEntries } from "./utils/cacheManager.ts";
 import { createHistoricalCountEndpoint } from "./endpoints/historicalCounts.ts";
 import { createServiceIdsEndpoint } from "./endpoints/serviceId.ts";
 import { createLocationExportEndpoint } from "./endpoints/locationExport.ts";
+import {createLatePointsEndpoint} from "./endpoints/latePoints.ts";
 
 const schedulePath = 'schedule/schedule.zip';
 
@@ -64,6 +65,7 @@ createBlockCancelCountEndpoint(server);
 createServiceIdsEndpoint(server);
 createHistoricalCountEndpoint(server);
 createLocationExportEndpoint(server);
+createLatePointsEndpoint(server);
 
 await server.register(cors, { origin: "*" });
 

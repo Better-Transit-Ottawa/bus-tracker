@@ -9,7 +9,6 @@ import { createListVehiclesEndpoint } from "./endpoints/listVehicles.ts";
 import { config } from "./utils/config.ts";
 import { createRouteDetailsEndpoint } from "./endpoints/routeDetails.ts";
 import { createListRoutesEndpoint } from "./endpoints/listRoutes.ts";
-import schedule from 'node-schedule';
 import fs from 'fs';
 import { createListCanceledEndpoint } from "./endpoints/listCancelations.ts";
 import { createOnTimePerformanceEndpoint } from "./endpoints/onTimePerformance.ts";
@@ -19,6 +18,7 @@ import { deleteOldCacheEntries } from "./utils/cacheManager.ts";
 import { createHistoricalCountEndpoint } from "./endpoints/historicalCounts.ts";
 import { createServiceIdsEndpoint } from "./endpoints/serviceId.ts";
 import { createLocationExportEndpoint } from "./endpoints/locationExport.ts";
+import { Cron } from "croner";
 
 const schedulePath = 'schedule/schedule.zip';
 
@@ -32,8 +32,7 @@ const server: FastifyInstance = Fastify({
 });
 
 // Schedule GTFS data fetch at 1 AM daily
-schedule.scheduleJob(
-  { rule: '0 0 1 * * *', tz: 'America/Toronto' },
+new Cron("0 0 1 * * *", { timezone: 'America/Toronto' },
   () => {
     fetchGtfs().catch(e =>
       console.error('Error fetching GTFS data:', e)
@@ -46,7 +45,7 @@ if (!fs.existsSync(schedulePath)) {
 
 
 // Schedule real-time data fetch every minute
-schedule.scheduleJob('* * * * *', () => 
+new Cron('* * * * *', () => 
     fetchRealtime().catch(e => console.error("Error fetching real-time data:", e))
 );
 fetchRealtime();
@@ -68,8 +67,7 @@ createLocationExportEndpoint(server);
 await server.register(cors, { origin: "*" });
 
 // Nightly pre-warm at 4 AM Eastern, avoiding current service day
-schedule.scheduleJob(
-    { rule: '0 0 4 * * *', tz: 'America/Toronto' },
+new Cron("0 0 4 * * *", { timezone: 'America/Toronto' },
     () => warmOnTimePerformanceCache(server).catch((err) => console.error("Cache pre-warm failed (scheduled)", err))
 );
 

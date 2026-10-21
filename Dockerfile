@@ -1,4 +1,4 @@
-FROM node:25-alpine AS app
+FROM node:26-alpine AS app
 WORKDIR /usr/src/app
 RUN apk add --no-cache tzdata
 ENV TZ=America/Toronto

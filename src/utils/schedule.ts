@@ -180,7 +180,10 @@ export function isBadDataDate(date: Date): boolean {
         "2026-10-24",
         "2026-10-25",
         "2026-10-26",
-        "2026-10-27"
+        "2026-10-27",
+        "2026-10-30",
+        "2026-10-31",
+        "2026-11-01"
     ].includes(toDateString(date));
 }
 

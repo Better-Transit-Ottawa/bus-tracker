@@ -1,8 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import extract from 'extract-zip';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { importGtfs } from "./gtfsImport.ts"
+
+const execFileAsync = promisify(execFile);
 
 const scheduleZipUrl = "https://oct-gtfs-emasagcnfmcgeham.z01.azurefd.net/public-access/GTFSExport.zip";
 const localZipPath = path.resolve('./schedule/schedule.zip');
@@ -40,12 +43,10 @@ export async function fetchGtfs(): Promise<void> {
 
     if (isNewOrUpdated) {
         await fs.writeFile(localZipPath, newData);
-        console.log('Schedule zip saved successfully.');
 
         try {
             // Extract the ZIP into a separate folder
-            await extract(localZipPath, { dir: extractPath });
-            console.log('Extraction complete');
+            await execFileAsync('unzip', ['-o', localZipPath, '-d', extractPath]);
 
             // Import GTFS data
             const date = new Date();
